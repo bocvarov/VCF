@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specifikace: Rezervační systém kadeřnictví</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#161616;
+    --paper:#ffffff;
+    --muted:#5c5c5c;
+    --line:#d9d9d6;
+    --line-soft:#ececea;
+    --code-bg:#f6f6f3;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Literata', Georgia, 'Times New Roman', serif;
+    font-size:18px;
+    line-height:1.72;
+    font-weight:400;
+    text-rendering:optimizeLegibility;
+    -webkit-font-smoothing:antialiased;
+  }
+  .doc{
+    max-width:790px;
+    margin:0 auto;
+    padding:76px 36px 120px;
+  }
+
+  /* --- Typography --- */
+  h1.title{
+    font-size:32px;
+    line-height:1.2;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 18px;
+  }
+  h1.section{
+    font-size:26px;
+    line-height:1.25;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:64px 0 22px;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--ink);
+  }
+  h2{
+    font-size:21px;
+    line-height:1.3;
+    font-weight:700;
+    margin:40px 0 12px;
+  }
+  h3{
+    font-size:18px;
+    line-height:1.35;
+    font-weight:700;
+    margin:28px 0 8px;
+  }
+  p{margin:0 0 14px;}
+  ul,ol{margin:0 0 16px; padding-left:24px;}
+  li{margin:6px 0;}
+  strong{font-weight:700;}
+  a{color:inherit;}
+  hr{border:none; border-top:1px solid var(--line-soft); margin:36px 0;}
+
+  /* --- Blockquotes / notes --- */
+  blockquote{
+    margin:16px 0;
+    padding:2px 0 2px 20px;
+    border-left:3px solid #cfcfca;
+    color:#333;
+    font-style:italic;
+  }
+  blockquote p{margin:0 0 8px;}
+  blockquote p:last-child{margin-bottom:0;}
+  .note{
+    color:var(--muted);
+    font-size:15.5px;
+    font-style:italic;
+    border-left:3px solid var(--line);
+    padding:2px 0 2px 18px;
+    margin:14px 0 22px;
+  }
+
+  /* --- Code --- */
+  code{
+    font-family:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size:0.82em;
+    background:var(--code-bg);
+    border:1px solid var(--line-soft);
+    border-radius:3px;
+    padding:1px 5px;
+    word-break:break-word;
+  }
+  pre{
+    background:var(--code-bg);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:18px 20px;
+    overflow-x:auto;
+    margin:18px 0;
+  }
+  pre code{
+    background:none;
+    border:none;
+    padding:0;
+    font-size:13.5px;
+    line-height:1.65;
+    white-space:pre;
+  }
+
+  /* --- Tables --- */
+  .table-wrap{overflow-x:auto; margin:18px 0;}
+  table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:16px;
+    line-height:1.5;
+  }
+  th,td{
+    border:1px solid var(--line);
+    padding:9px 13px;
+    text-align:left;
+    vertical-align:top;
+  }
+  thead th{
+    background:var(--code-bg);
+    font-weight:700;
+  }
+  s{color:var(--muted);}
+
+  /* --- Checklists --- */
+  ul.checklist{list-style:none; padding-left:0; margin:14px 0 18px;}
+  ul.checklist li{
+    position:relative;
+    padding-left:30px;
+    margin:7px 0;
+  }
+  ul.checklist li::before{
+    content:"\2610";            /* ballot box */
+    position:absolute;
+    left:0;
+    top:-0.02em;
+    font-family:'JetBrains Mono', monospace;
+    font-size:18px;
+    color:var(--ink);
+  }
+  ul.checklist li.done::before{
+    content:"\2611";            /* ballot box with check */
+  }
+
+  .footer{
+    margin-top:56px;
+    padding-top:18px;
+    border-top:1px solid var(--line-soft);
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.6;
+    font-style:italic;
+  }
+
+  /* --- Responsive --- */
+  @media (max-width:620px){
+    body{font-size:16px; line-height:1.66;}
+    .doc{padding:40px 18px 80px;}
+    h1.title{font-size:25px;}
+    h1.section{font-size:21px; margin:46px 0 18px;}
+    h2{font-size:18.5px;}
+    h3{font-size:16.5px;}
+    table{font-size:14px;}
+    th,td{padding:7px 9px;}
+    pre code{font-size:12px;}
+  }
+
+  /* --- Print --- */
+  @media print{
+    body{font-size:11.5pt; line-height:1.5;}
+    .doc{max-width:none; padding:0;}
+    h1.section{border-bottom:1.5pt solid #000;}
+    pre,code{background:#f4f4f4;}
+    blockquote,.note{color:#000;}
+    a{text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<main class="doc">
+
+  <h1 class="title">📋 Specifikace: Rezervační systém kadeřnictví (vyplněný příklad)</h1>
+
+  <p class="note">Tento dokument je <strong>ukázkový vyplněný „cílový stav"</strong> univerzální specifikační šablony (SDD + TDD + BDD) na konkrétním use-case: <em>webová stránka kadeřnictví s rezervačním systémem, kde si zákazník sám rezervuje termín</em>. Zástupné texty jsou nahrazeny reálným obsahem, nápovědy odstraněny.</p>
+
+  <hr>
+
+  <!-- HLAVIČKA -->
+  <h2>🧭 Hlavička dokumentu</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Pole</th><th>Hodnota</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Název projektu / funkce</strong></td><td>Rezervační web — Kadeřnictví U Lucie</td></tr>
+      <tr><td><strong>Verze</strong></td><td><code>1.0</code></td></tr>
+      <tr><td><strong>Stav</strong></td><td><s>Návrh</s> · <strong>Schváleno</strong> · <s>Implementováno</s> · <s>Hotovo</s></td></tr>
+      <tr><td><strong>Autor</strong></td><td>Lucie N. (majitelka) + vývojář</td></tr>
+      <tr><td><strong>Vytvořeno</strong></td><td>2026-05-20</td></tr>
+      <tr><td><strong>Poslední úprava</strong></td><td>2026-06-01</td></tr>
+      <tr><td><strong>Použité AI nástroje</strong></td><td>Claude Code · GitHub Spec Kit</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 1. SPECIFIKACE -->
+  <h1 class="section">1. SPECIFIKACE — <em>CO a PROČ stavíme</em> <em>(povinné)</em></h1>
+
+  <h2>1.1 Záměr a kontext (PROČ)</h2>
+  <ul>
+    <li><strong>Problém:</strong> Malé kadeřnictví (1 majitelka + 2 kadeřnice) přijímá rezervace telefonicky a přes Instagram DM. Telefon vyrušuje při stříhání, vznikají chyby (dvojité rezervace, zapomenuté termíny zapsané jen na papíře) a zákazníci nemůžou rezervovat mimo pracovní dobu — typicky večer, kdy si to chtějí zařídit.</li>
+    <li><strong>Cíl / hodnota:</strong> Zákazníci si rezervují termín <strong>sami, online, 24/7</strong>, bez telefonátu. Personál se nemusí vyrušovat, omezí se dvojité rezervace a sníží se počet nedostavení (no-show) díky automatickým připomínkám. Úspěch poznáme podle podílu online rezervací a poklesu no-show (viz 1.6).</li>
+    <li><strong>Mimo rozsah (Non-goals):</strong>
+      <ul>
+        <li>V této verzi <strong>neřešíme online platby ani zálohy</strong> (platí se na místě).</li>
+        <li><strong>Žádný věrnostní program</strong> ani slevové kódy.</li>
+        <li><strong>Žádný e-shop</strong> s produkty.</li>
+        <li><strong>Žádná nativní mobilní aplikace</strong> (jen responzivní web).</li>
+        <li><strong>Pouze jedna pobočka</strong> — neřešíme správu více salonů.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>1.2 Uživatelské scénáře — <em>co uživatel dělá</em></h2>
+
+  <h3>User Story 1 — Zákazník si rezervuje termín (Priorita: <strong>P1</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>online vybrat službu, kadeřnici a volný čas a rezervovat termín</strong>, abych <strong>nemusel/a volat během otevírací doby</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Proč tato priorita:</strong> Bez tohoto scénáře produkt nemá smysl — je to jádro celého systému.</li>
+    <li><strong>Akceptační scénáře</strong> (Given–When–Then):
+      <ol>
+        <li><strong>Given</strong> salon má na pondělí volné sloty · <strong>When</strong> zákazník vybere „Dámský střih", kadeřnici Lucii a slot 10:00 a vyplní jméno, telefon a e-mail · <strong>Then</strong> systém rezervaci vytvoří, slot označí jako obsazený a zobrazí potvrzení.</li>
+        <li><strong>Given</strong> rezervace byla vytvořena · <strong>When</strong> systém dokončí uložení · <strong>Then</strong> zákazník obdrží potvrzovací e-mail s datem, časem, službou, jménem kadeřnice a odkazem na zrušení.</li>
+        <li><strong>Given</strong> zákazník nevyplnil e-mail nebo zadal neplatný formát · <strong>When</strong> odešle formulář · <strong>Then</strong> systém rezervaci nevytvoří a zobrazí konkrétní chybu u daného pole.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 2 — Zákazník zruší nebo přesune termín (Priorita: <strong>P1</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>zrušit nebo přesunout svou rezervaci přes odkaz z e-mailu</strong>, abych <strong>nemusel/a volat a uvolnil/a slot pro někoho jiného</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Proč tato priorita:</strong> Zrušení bez účtu uvolňuje sloty a snižuje no-show; je to nutný protějšek k US1.</li>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> zákazník má potvrzenou rezervaci a odkaz z e-mailu · <strong>When</strong> klikne na „Zrušit termín" více než 24 h předem · <strong>Then</strong> systém rezervaci zruší, slot uvolní a pošle potvrzení o zrušení.</li>
+        <li><strong>Given</strong> do termínu zbývá méně než 24 h · <strong>When</strong> zákazník klikne na zrušení · <strong>Then</strong> systém zobrazí, že online zrušení už není možné, a nabídne telefon na salon.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 3 — Personál spravuje kalendář (Priorita: <strong>P2</strong>)</h3>
+  <blockquote><p>Jako <strong>kadeřnice</strong> chci <strong>vidět všechny rezervace v denním/týdenním kalendáři a ručně přidat či zablokovat čas</strong>, abych <strong>měla přehled a mohla zapsat i telefonickou rezervaci</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> personál je přihlášený · <strong>When</strong> otevře kalendář na konkrétní den · <strong>Then</strong> vidí všechny rezervace s jménem zákazníka, službou a kontaktem.</li>
+        <li><strong>Given</strong> personál si chce dát pauzu · <strong>When</strong> zablokuje čas 12:00–12:30 · <strong>Then</strong> tento slot přestane být zákazníkům nabízen jako volný.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 4 — Automatická připomínka (Priorita: <strong>P3</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>dostat připomínku den předem</strong>, abych <strong>na termín nezapomněl/a</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> zákazník má potvrzenou rezervaci na zítřek · <strong>When</strong> nastane čas 24 h před termínem · <strong>Then</strong> systém odešle připomínkový e-mail.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>1.2.x Hraniční případy (Edge Cases)</h3>
+  <ul>
+    <li><strong>Prázdný / neúplný formulář:</strong> chybí jméno, telefon nebo e-mail → rezervace se nevytvoří, chyba u konkrétního pole.</li>
+    <li><strong>Neplatný e-mail / telefon:</strong> nevalidní formát → blokace s nápovědou ke správnému formátu.</li>
+    <li><strong>Slot mezitím obsazen:</strong> zákazník otevřel stránku, slot byl volný, ale než odeslal, někdo ho zabral → systém odmítne a nabídne nejbližší volné časy.</li>
+    <li><strong>Souběžná rezervace stejného slotu:</strong> dva zákazníci kliknou „Rezervovat" na stejný slot ve stejnou vteřinu → potvrdí se <strong>pouze první</strong>, druhý dostane hlášku „slot už není volný" (atomická kontrola na úrovni DB).</li>
+    <li><strong>Rezervace v minulosti / mimo otevírací dobu:</strong> systém takové sloty vůbec nenabízí; pokus o přímé odeslání odmítne.</li>
+    <li><strong>Zavřený den (svátek, dovolená):</strong> den se nenabízí.</li>
+    <li><strong>Kadeřnice nemá v daný den směnu:</strong> její sloty se v ten den nezobrazí.</li>
+    <li><strong>Služba je delší než zbývající čas do konce směny:</strong> slot se nenabídne (např. barvení 90 min v 18:30, když se zavírá v 19:00).</li>
+    <li><strong>Výpadek odeslání e-mailu:</strong> rezervace zůstane platná, e-mail se zařadí k opětovnému odeslání; zákazník vidí potvrzení i na obrazovce.</li>
+    <li><strong>Vícenásobné kliknutí na „Rezervovat":</strong> systém vytvoří jen jednu rezervaci (idempotence / blokace tlačítka).</li>
+  </ul>
+
+  <h2>1.3 Funkční požadavky — <em>co systém musí umět</em></h2>
+  <ul>
+    <li><strong>FR-001:</strong> Systém MUSÍ zobrazit seznam služeb s názvem, dobou trvání a cenou.</li>
+    <li><strong>FR-002:</strong> Systém MUSÍ umožnit výběr konkrétní kadeřnice, nebo volbu „kterákoli volná".</li>
+    <li><strong>FR-003:</strong> Když zákazník vybere službu a kadeřnici, systém MUSÍ zobrazit pouze volné sloty odpovídající délce služby a směně kadeřnice.</li>
+    <li><strong>FR-004:</strong> Systém MUSÍ zabránit rezervaci slotu, který se překrývá s existující rezervací (žádné dvojí rezervace).</li>
+    <li><strong>FR-005:</strong> Když zákazník odesílá rezervaci, systém MUSÍ vyžadovat jméno, telefon a e-mail; e-mail MUSÍ být ve validním formátu.</li>
+    <li><strong>FR-006:</strong> Když je rezervace vytvořena, systém MUSÍ odeslat potvrzovací e-mail s detaily a odkazem na zrušení/přesun.</li>
+    <li><strong>FR-007:</strong> Systém MUSÍ umožnit zrušení rezervace přes unikátní odkaz <strong>bez nutnosti zakládat účet</strong>.</li>
+    <li><strong>FR-008:</strong> Pokud do termínu zbývá méně než 24 h, systém MUSÍ online zrušení odmítnout a zobrazit telefonní kontakt na salon.</li>
+    <li><strong>FR-009:</strong> Systém MUSÍ bránit rezervaci v minulosti a mimo otevírací dobu.</li>
+    <li><strong>FR-010:</strong> Pokud dva zákazníci současně rezervují stejný slot, systém MUSÍ potvrdit pouze prvního a druhému zobrazit, že slot už není volný (atomická kontrola).</li>
+    <li><strong>FR-011:</strong> Systém MUSÍ respektovat zavřené dny (svátky, dovolená) a tyto dny nenabízet.</li>
+    <li><strong>FR-012:</strong> Personál MUSÍ mít zabezpečené (přihlášené) rozhraní pro zobrazení a správu rezervací v kalendáři.</li>
+    <li><strong>FR-013:</strong> Personál MUSÍ moci ručně zablokovat čas a vytvořit rezervaci za telefonujícího zákazníka.</li>
+    <li><strong>FR-014:</strong> Kde je zapnuté připomínání, systém MUSÍ odeslat připomínku 24 h před termínem.</li>
+    <li><strong>FR-015:</strong> Systém MUSÍ uchovávat osobní údaje zákazníků v souladu s GDPR. <code>[NEEDS CLARIFICATION: jak dlouho data uchovávat po proběhlém termínu? Jaký je právní základ a způsob výmazu?]</code></li>
+  </ul>
+
+  <h2>1.4 Nefunkční požadavky — <em>jak DOBŘE</em></h2>
+  <ul>
+    <li><strong>Výkon:</strong> Stránka s výběrem termínu se načte do 2 s na mobilu; API pro dostupné sloty odpoví do 300 ms při běžné zátěži.</li>
+    <li><strong>Bezpečnost:</strong> Žádné tajné klíče v kódu (jen v proměnných prostředí); admin za přihlášením; rate-limiting na rezervační endpoint (anti-spam); CSRF ochrana formulářů; validace všech vstupů na serveru, ne jen v prohlížeči.</li>
+    <li><strong>Použitelnost / přístupnost:</strong> Mobile-first (většina zákazníků rezervuje z mobilu); WCAG 2.1 AA; celý proces ovladatelný klávesnicí.</li>
+    <li><strong>Spolehlivost / dostupnost:</strong> Dostupnost ≥ 99,5 %; potvrzovací e-mail odeslán do 1 minuty; zrušení je idempotentní (opakované kliknutí nezpůsobí chybu).</li>
+    <li><strong>Náklady / limity:</strong> Provoz do ~10 €/měsíc na malém hostingu; bezplatný/levný e-mailový kanál.</li>
+  </ul>
+
+  <h2>1.5 Datové entity</h2>
+  <ul>
+    <li><strong>Služba (Service):</strong> název, doba_trvání_min, cena, popis. Vztah N:M ke <em>Kadeřnice</em> (která kadeřnice danou službu dělá).</li>
+    <li><strong>Kadeřnice (Stylist):</strong> jméno, foto, krátké bio. Vztah 1:N ke <em>Směna</em> a 1:N k <em>Rezervace</em>.</li>
+    <li><strong>Směna (Shift):</strong> kadeřnice, datum, od, do. Definuje, kdy je kadeřnice dostupná.</li>
+    <li><strong>Rezervace (Booking):</strong> služba, kadeřnice, zákazník, začátek, konec, stav (<code>potvrzeno</code> / <code>zrušeno</code>), unikátní_token. Vztahy N:1 ke <em>Službě</em>, <em>Kadeřnici</em>, <em>Zákazníkovi</em>.</li>
+    <li><strong>Zákazník (Customer):</strong> jméno, telefon, e-mail (kontaktní údaje bez uživatelského účtu). Vztah 1:N k <em>Rezervace</em>.</li>
+    <li><strong>Zavřeno (Closure):</strong> datum, důvod (svátek / dovolená). Vyřazuje den z nabídky.</li>
+  </ul>
+
+  <h2>1.6 Kritéria úspěchu — <em>měřitelná</em></h2>
+  <ul>
+    <li><strong>SC-001:</strong> Do 3 měsíců od spuštění proběhne ≥ 60 % rezervací online (bez telefonu).</li>
+    <li><strong>SC-002:</strong> Zákazník dokončí rezervaci za ≤ 90 sekund (od výběru služby po potvrzení).</li>
+    <li><strong>SC-003:</strong> Během prvních 3 měsíců nevznikne <strong>žádná</strong> dvojitá rezervace.</li>
+    <li><strong>SC-004:</strong> Míra nedostavení (no-show) klesne o ≥ 20 % oproti období před připomínkami.</li>
+    <li><strong>SC-005:</strong> ≥ 95 % potvrzovacích e-mailů je doručeno do 1 minuty.</li>
+  </ul>
+
+  <h2>1.7 Předpoklady a otevřené otázky</h2>
+  <ul>
+    <li><strong>Předpoklady:</strong> Jeden salon, max. 4 kadeřnice; zákazník nepotřebuje účet; e-mail je primární komunikační kanál; provozní doba je relativně stabilní.</li>
+    <li><strong>Otevřené otázky:</strong>
+      <ul>
+        <li>Přidat SMS připomínky? (náklady vs. dosah)</li>
+        <li>Zavést malou zálohu proti opakovaným no-show?</li>
+        <li>Bude web vícejazyčný (CZ/EN)?</li>
+        <li>Retence osobních údajů — viz <code>[NEEDS CLARIFICATION]</code> u FR-015.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <!-- 2. ÚSTAVA -->
+  <h1 class="section">2. ÚSTAVA PROJEKTU — <em>neměnné principy</em></h1>
+  <h2>Principy</h2>
+  <ol>
+    <li><strong>Kvalita kódu:</strong> Dodržuj idiomy TypeScriptu. Používej ESLint (linter) a Prettier (formatter); každý merge musí projít oběma.</li>
+    <li><strong>Testování:</strong> Žádný produkční kód bez předem padajícího testu (TDD). Minimální pokrytí kritické logiky (dostupnost slotů, kolize rezervací) <strong>90 %</strong>.</li>
+    <li><strong>Jednoduchost:</strong> Nejjednodušší řešení, které projde testy. Žádné předčasné zobecňování (např. zatím neřeš multi-salon).</li>
+    <li><strong>Bezpečnost:</strong> Nikdy necommituj tajné klíče. Validuj všechny vstupy na serveru. Osobní údaje jen v nezbytném rozsahu.</li>
+    <li><strong>Malé změny:</strong> Strukturální (refactor) a behaviorální (nová funkce) změny odděluj do různých commitů.</li>
+    <li><strong>Struktura repozitáře:</strong> <code>src/</code> aplikace, <code>tests/</code> testy, <code>prisma/</code> databázové schéma, <code>features/</code> BDD scénáře, dokumentace v kořeni.</li>
+  </ol>
+
+  <!-- 3. PLÁN -->
+  <h1 class="section">3. PLÁN IMPLEMENTACE — <em>JAK to postavíme</em></h1>
+
+  <h2>3.1 Souhrn</h2>
+  <p>Postavíme full-stack webovou aplikaci v Next.js (jeden projekt pro frontend i backend API). Data uložíme v PostgreSQL přes ORM Prisma. Kolize rezervací ošetříme na úrovni databáze (transakce + unikátní omezení), aby nešly vytvořit dvě rezervace na stejný slot.</p>
+
+  <h2>3.2 Technický kontext</h2>
+  <p class="note">Pro úplného začátečníka: každá řádka říká <em>čím</em> se bude stavět. Jsou to <strong>jedna</strong> z možných voleb — stejnou specifikaci (část 1) lze postavit i jiným stackem.</p>
+  <ul>
+    <li><strong>Jazyk / verze:</strong> TypeScript 5.x na Node.js 20 LTS.</li>
+    <li><strong>Hlavní závislosti / frameworky:</strong> Next.js 14 (App Router) — frontend i API v jednom; Prisma (práce s databází); Resend nebo SMTP (e-maily).</li>
+    <li><strong>Úložiště / databáze:</strong> PostgreSQL (lokálně i v produkci přes managed Postgres).</li>
+    <li><strong>Testovací framework:</strong> Vitest (jednotkové testy) · Playwright (end-to-end v prohlížeči) · Cucumber.js (BDD scénáře z části 5).</li>
+    <li><strong>Cílová platforma:</strong> Responzivní web, mobile-first; hosting na Vercelu.</li>
+  </ul>
+
+  <h2>3.3 Kontrola ústavy (brána) ✅</h2>
+  <ul class="checklist">
+    <li class="done">Plán neporušuje žádný princip z Ústavy projektu.</li>
+    <li class="done">Případná porušení jsou zdůvodněna níže (3.5) — <em>žádná nejsou.</em></li>
+  </ul>
+
+  <h2>3.4 Struktura projektu</h2>
+  <pre><code>kadernictvi-rezervace/
+├── src/
+│   ├── app/            # stránky a API routy (Next.js App Router)
+│   ├── lib/            # doménová logika (dostupnost slotů, kolize)
+│   └── components/     # UI komponenty
+├── prisma/
+│   └── schema.prisma   # databázové schéma (entity z 1.5)
+├── tests/              # jednotkové a integrační testy (Vitest)
+├── features/           # BDD scénáře *.feature (Cucumber)
+├── docs/               # dokumentace
+└── AGENTS.md           # pravidla pro AI agenty (část 6)</code></pre>
+
+  <h2>3.5 Sledování složitosti</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Co porušujeme</th><th>Proč je to nutné</th><th>Jednodušší varianta, kterou jsme zamítli</th></tr></thead>
+    <tbody>
+      <tr><td><em>(zatím nic)</em></td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 4. ÚKOLY -->
+  <h1 class="section">4. ÚKOLY — <em>rozpad na malé kroky</em></h1>
+  <p class="note"><strong>Legenda:</strong> <code>T001</code> = pořadí · <code>[P]</code> = lze dělat paralelně · <code>[US1]</code> = patří k User Story 1.</p>
+
+  <h2>Fáze 1: Příprava</h2>
+  <ul class="checklist">
+    <li><strong>T001</strong> Vytvoř projekt Next.js + TypeScript a strukturu složek.</li>
+    <li><strong>T002</strong> <code>[P]</code> Nastav ESLint a Prettier.</li>
+    <li><strong>T003</strong> <code>[P]</code> Nastav připojení k PostgreSQL a Prisma.</li>
+  </ul>
+
+  <h2>Fáze 2: Základ <em>(hotové před prací na user stories)</em></h2>
+  <ul class="checklist">
+    <li><strong>T004</strong> <code>[P]</code> Nastav testovací frameworky (Vitest, Playwright, Cucumber).</li>
+    <li><strong>T005</strong> Definuj datové modely v <code>prisma/schema.prisma</code> (Služba, Kadeřnice, Směna, Rezervace, Zákazník, Zavřeno).</li>
+    <li><strong>T006</strong> Naplň testovací data (2–3 kadeřnice, pár služeb, směny).</li>
+  </ul>
+
+  <h2>Fáze 3: User Story 1 — rezervace (P1)</h2>
+  <ul class="checklist">
+    <li><strong>T007</strong> <code>[US1]</code> Napiš padající test pro výpočet volných slotů (délka služby + směna + existující rezervace) v <code>tests/availability.test.ts</code>.</li>
+    <li><strong>T008</strong> <code>[US1]</code> Implementuj minimální logiku dostupnosti, aby test prošel.</li>
+    <li><strong>T009</strong> <code>[US1]</code> Napiš padající test pro kolizi rezervací (souběžný zápis → potvrdí se jen jeden).</li>
+    <li><strong>T010</strong> <code>[US1]</code> Implementuj atomické vytvoření rezervace (transakce + unikátní omezení).</li>
+    <li><strong>T011</strong> <code>[US1]</code> Vytvoř formulář a stránku výběru služby/kadeřnice/času.</li>
+    <li><strong>T012</strong> <code>[US1]</code> Odeslání potvrzovacího e-mailu s odkazem na zrušení.</li>
+    <li><strong>T013</strong> <code>[US1]</code> Refactor (vyčisti kód beze změny chování).</li>
+  </ul>
+
+  <h2>Fáze 4: User Story 2 — zrušení/přesun (P1)</h2>
+  <ul class="checklist">
+    <li><strong>T014</strong> <code>[US2]</code> Napiš padající test pro zrušení přes token (vč. pravidla &lt; 24 h).</li>
+    <li><strong>T015</strong> <code>[US2]</code> Implementuj stránku a logiku zrušení/přesunu přes unikátní odkaz.</li>
+  </ul>
+
+  <h2>Fáze 5: User Story 3 — správa personálem (P2)</h2>
+  <ul class="checklist">
+    <li><strong>T016</strong> <code>[US3]</code> Přihlášení personálu + kalendář rezervací.</li>
+    <li><strong>T017</strong> <code>[US3]</code> Ruční blokace času a rezervace za telefonujícího zákazníka.</li>
+  </ul>
+
+  <h2>Fáze 6: User Story 4 — připomínky (P3)</h2>
+  <ul class="checklist">
+    <li><strong>T018</strong> <code>[US4]</code> Naplánovaná úloha odesílající připomínku 24 h předem.</li>
+  </ul>
+
+  <h2>Fáze 7: Dokončení (Polish)</h2>
+  <ul class="checklist">
+    <li><strong>T019</strong> Ošetři všechny hraniční případy z 1.2.x.</li>
+    <li><strong>T020</strong> Doplň dokumentaci, zkontroluj pokrytí testy a přístupnost (WCAG).</li>
+  </ul>
+
+  <!-- 5. BDD -->
+  <h1 class="section">5. BDD SCÉNÁŘE — <em>chování viditelné uživateli</em></h1>
+  <p class="note">V praxi tato část žije v souboru <code>features/rezervace.feature</code> a je spustitelná přes Cucumber.</p>
+  <pre><code># language: cs
+Funkce: Online rezervace termínu
+  Jako zákazník
+  Chci si sám rezervovat termín v kadeřnictví
+  Abych nemusel volat během otevírací doby
+
+  Scénář: Úspěšná rezervace volného termínu (happy path)
+    Pokud je v pondělí volný slot v 10:00 u kadeřnice Lucie
+    Když vyberu službu "Dámský střih", kadeřnici "Lucie" a čas 10:00
+    A vyplním jméno, telefon a platný e-mail
+    A potvrdím rezervaci
+    Pak je rezervace vytvořena
+    A slot 10:00 je označen jako obsazený
+    A obdržím potvrzovací e-mail s odkazem na zrušení
+
+  Scénář: Slot byl mezitím obsazen (edge case)
+    Pokud jsem otevřel stránku, když byl slot v 10:00 volný
+    A někdo jiný mezitím rezervoval tentýž slot
+    Když potvrdím rezervaci na 10:00
+    Pak rezervace není vytvořena
+    A vidím hlášku, že slot už není volný
+    A jsou mi nabídnuty nejbližší volné časy
+
+  Scénář: Pozdní pokus o zrušení (edge case)
+    Pokud mám potvrzenou rezervaci na termín za 3 hodiny
+    Když kliknu v e-mailu na "Zrušit termín"
+    Pak online zrušení není provedeno
+    A vidím telefonní kontakt na salon</code></pre>
+
+  <!-- 6. AGENTS.md -->
+  <h1 class="section">6. AGENTS.md — <em>pravidla pro AI agenta</em></h1>
+  <p class="note">V praxi tato část žije v souboru <code>AGENTS.md</code> v kořeni repozitáře a načítá se automaticky.</p>
+  <pre><code># Pokyny pro AI agenty
+
+## Projekt
+Rezervační web pro malé kadeřnictví. Next.js 14 (App Router) + TypeScript 5
++ Prisma + PostgreSQL. Zákazník rezervuje bez účtu, personál má přihlášení.
+
+## Příkazy
+- Build:     npm run build
+- Test:      npm test
+- Lint:      npm run lint
+- Spuštění:  npm run dev
+
+## Workflow
+- Nejdřív plán (Plan Mode / read-only), pak teprve kód.
+- TDD: padající test → minimální kód → refactor.
+- NEMĚŇ testy jen proto, aby prošly. Oprav kód.
+- Drž se Specifikace (část 1) a Plánu (část 3). Při nejasnosti se zeptej.
+
+## Mantinely (hranice)
+- ✅ Vždy:    spusť testy před commitem; commituj malé, logické celky;
+             kolize rezervací řeš atomicky (transakce + unikátní omezení).
+- ⚠️ Zeptej se: změny schématu v prisma/; přidání nové závislosti;
+             změna pravidel zrušení (24h).
+- 🚫 Nikdy:  necommituj tajné klíče ani .env; needituj node_modules/;
+             neukládej víc osobních údajů, než je nutné.
+
+## Příklad správného stylu
+// Volné sloty počítej z (směna − existující rezervace), nikdy "zkontroluj
+// a pak ulož" mimo transakci — jinak vznikne dvojitá rezervace.
+const booking = await prisma.$transaction(async (tx) =&gt; { /* ... */ });</code></pre>
+
+  <!-- 7. DoD -->
+  <h1 class="section">✅ 7. Definice hotového (Definition of Done)</h1>
+  <ul class="checklist">
+    <li>Všechny akceptační scénáře (1.2) procházejí jako automatické testy.</li>
+    <li>Pokryté hraniční případy (1.2.x) — zvlášť kolize slotů a pozdní zrušení.</li>
+    <li>Žádné nevyřešené <code>[NEEDS CLARIFICATION]</code> (vč. GDPR retence u FR-015).</li>
+    <li>Kód prochází ESLint; všechny testy zelené; pokrytí kritické logiky ≥ 90 %.</li>
+    <li>Splněna měřitelná kritéria úspěchu (1.6), kde je lze ověřit už při dodání (SC-002, SC-003, SC-005).</li>
+    <li>Specifikace aktualizována podle finální implementace (proti spec driftu).</li>
+    <li>Kód jsem přečetl/a a rozumím mu (neslepá důvěra v AI).</li>
+  </ul>
+
+  <!-- 8. ÚDRŽBA -->
+  <h1 class="section">🔄 8. Údržba a relevance</h1>
+  <ul class="checklist">
+    <li><strong>Jediný zdroj pravdy:</strong> každou změnu (nová služba, jiná pravidla zrušení) promítni nejdřív sem, pak do kódu.</li>
+    <li><strong>Verzuj v Gitu:</strong> tento soubor commituj spolu s kódem přes pull request.</li>
+    <li><strong>Krátké smyčky:</strong> spec → implementuj → uč se → aktualizuj spec.</li>
+    <li><strong>Testy v CI:</strong> akceptační i jednotkové testy běží automaticky a odhalí spec drift.</li>
+    <li><strong>Udržuj historii revizí</strong> (níže).</li>
+  </ul>
+
+  <h2>Historie revizí</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Datum</th><th>Verze</th><th>Co se změnilo</th><th>Autor</th></tr></thead>
+    <tbody>
+      <tr><td>2026-05-20</td><td><code>0.1</code></td><td>Počáteční verze.</td><td>Lucie N.</td></tr>
+      <tr><td>2026-06-01</td><td><code>1.0</code></td><td>Doplněny edge cases, NFR, plán a BDD; schváleno.</td><td>Lucie N. + vývojář</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="footer">Vyplněný příklad univerzální specifikační šablony (specifikace, ústava, plán, úkoly, BDD, pravidla pro AI agenty) na use-case rezervačního webu kadeřnictví. Konkrétní technologie (Next.js, Prisma, …) jsou jen jednou z možných realizací — ber je jako výchozí bod, ne dogma.</p>
+
+</main>
+</body>
+</html>

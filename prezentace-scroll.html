@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrollytelling: Specifikace rezervačního systému kadeřnictví</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== Shell (airbnb) ===== */
+
+  :root{
+    --rausch:#ff385c; --rausch-dark:#e00b41; --rausch-tint:#fff1f3;
+    --ink:#222222; --body:#3f3f3f; --muted:#6a6a6a; --muted-soft:#929292;
+    --canvas:#ffffff; --surface:#f7f7f7; --surface-2:#f2f2f2;
+    --hairline:#dddddd; --hairline-soft:#ebebeb;
+    --green:#1f8a5b; --green-tint:#f0f9f4; --amber:#b45309; --amber-tint:#fff7ed;
+    --blue:#2a6f97; --blue-tint:#eef5fb;
+    --radius:16px; --radius-sm:10px;
+    --shadow-soft:rgba(0,0,0,0.04) 0 1px 2px, rgba(0,0,0,0.06) 0 4px 14px;
+    --shadow:rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px, rgba(0,0,0,0.10) 0 8px 24px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:#fff; color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+
+  /* reading progress */
+  .reading-progress{position:fixed; top:0; left:0; right:0; height:3px; background:transparent; z-index:100;}
+  .reading-progress>div{height:100%; width:0; background:var(--rausch); transition:width .12s linear;}
+
+  /* topbar */
+  .topbar{
+    position:sticky; top:0; z-index:50; height:60px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 24px;
+    background:rgba(255,255,255,.92); backdrop-filter:saturate(180%) blur(8px);
+    border-bottom:1px solid var(--hairline);
+  }
+  .brand{display:flex; align-items:center; gap:12px; min-width:0;}
+  .brand .orb{width:28px;height:28px;border-radius:50%;background:var(--rausch);flex:0 0 auto;position:relative;box-shadow:0 2px 8px rgba(255,56,92,.35);}
+  .brand .orb::after{content:"";position:absolute;inset:8px;border:2px solid #fff;border-radius:50%;border-right-color:transparent;transform:rotate(35deg);}
+  .brand h1{font-size:15px;font-weight:700;margin:0;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .brand p{font-size:12px;color:var(--muted);margin:1px 0 0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .controls{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+  .stepind{font-size:12.5px;font-weight:600;color:var(--muted);margin-right:4px;white-space:nowrap;}
+  .stepind b{color:var(--ink);}
+  kbd{font-family:inherit;font-size:11px;font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-bottom-width:2px;border-radius:6px;padding:2px 6px;}
+  .btn{font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);background:var(--canvas);border:1px solid var(--hairline);border-radius:999px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s,transform .05s;white-space:nowrap;}
+  .btn:hover{background:var(--surface);} .btn:active{transform:scale(.97);}
+  .btn.icon{padding:8px;width:38px;height:38px;justify-content:center;}
+  .btn svg{width:16px;height:16px;display:block;}
+
+  /* hero (intro/outro) */
+  .hero{min-height:calc(100vh - 60px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 32px;background:#fff;}
+  .hero .eyebrow{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--rausch);margin-bottom:22px;}
+  .hero h1{font-size:clamp(30px,4.4vw,50px);line-height:1.08;font-weight:800;letter-spacing:-0.025em;margin:0 0 20px;max-width:18ch;color:var(--ink);}
+  .hero p.lead{font-size:clamp(15px,1.6vw,19px);line-height:1.55;color:var(--body);margin:0 0 30px;max-width:56ch;}
+  .hero .meta{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:30px;}
+  .hero .chip{font-size:14px;font-weight:600;color:var(--ink);background:var(--canvas);border:1px solid var(--hairline);border-radius:999px;padding:9px 16px;display:inline-flex;align-items:center;gap:8px;}
+  .hero .lektor{font-size:15px;color:var(--muted);font-weight:500;margin-bottom:28px;}
+  .hero .lektor strong{color:var(--ink);}
+  .hero .contact{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;}
+  .hero .contact a{text-decoration:none;font-size:15.5px;font-weight:600;color:var(--ink);background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:14px 20px;display:inline-flex;align-items:center;gap:10px;transition:background .15s,border-color .15s,color .15s;}
+  .hero .contact a:hover{border-color:var(--rausch);color:var(--rausch-dark);}
+  .hero .note-wa{font-size:12.5px;color:var(--muted);margin-top:14px;}
+  .hero .scroll-hint{margin-top:40px;font-size:13.5px;color:var(--muted-soft);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .hero .scroll-hint .arrow{width:22px;height:22px;animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+
+  /* scrolly layout */
+  .scrolly{display:grid;grid-template-columns:1.32fr 1fr;gap:30px;max-width:none;margin:0;padding:30px 28px 60px;}
+  .doc-col{min-width:0;}
+  .spec-shell{background:#fff;padding:18px 26px;}
+  .info-col{min-width:0;}
+  .info-sticky{position:sticky;top:84px;}
+  .info-card{
+    background:#fff;
+    padding:24px 24px 22px;max-height:calc(100vh - 110px);overflow:auto;animation:fadeUp .4s ease;
+  }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .info-card::-webkit-scrollbar{width:9px;}
+  .info-card::-webkit-scrollbar-thumb{background:#e4e4e4;border-radius:8px;border:3px solid #fff;}
+  .kap-tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--rausch);background:var(--rausch-tint);border-radius:999px;padding:5px 12px;margin-bottom:13px;}
+  .info-card h2.sec-name{font-size:23px;line-height:1.22;font-weight:800;letter-spacing:-0.015em;margin:0 0 20px;color:var(--ink);}
+  .block{border-radius:var(--radius-sm);padding:13px 15px;margin:0 0 12px;background:var(--surface);}
+  .block .lbl{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;margin:0 0 6px;}
+  .block .lbl .ico{font-size:14px;line-height:1;}
+  .block p{margin:0;font-size:14.5px;line-height:1.58;color:var(--body);}
+  .block p strong{color:var(--ink);font-weight:700;}
+  .block.proc{background:var(--rausch-tint);} .block.proc .lbl{color:var(--rausch-dark);}
+  .block.cil{background:var(--blue-tint);} .block.cil .lbl{color:var(--blue);}
+  .block.dosah{background:var(--green-tint);} .block.dosah .lbl{color:var(--green);}
+  .block.chyba{background:var(--amber-tint);} .block.chyba .lbl{color:var(--amber);}
+
+  /* spec overrides + gentle active highlight */
+  .spec{background:#fff;}
+  .spec .doc{max-width:none;margin:0;padding:6px 4px 24px;}
+  .spec h1.section{margin-top:52px;}
+  .spec .js-sec{scroll-margin-top:90px;transition:background .3s;}
+  .spec .js-sec.active-head{
+    background:linear-gradient(90deg,rgba(255,56,92,.08),rgba(255,56,92,0));border-radius:6px;
+  }
+
+  /* overlay map */
+  .overlay{position:fixed;inset:0;background:rgba(34,34,34,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:80;padding:40px;}
+  .overlay.show{display:flex;}
+  .map-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:24px 24px 12px;}
+  .map-card h3{font-size:18px;font-weight:800;margin:0 0 4px;}
+  .map-card .sub{font-size:13px;color:var(--muted);margin:0 0 16px;}
+  .map-list{list-style:none;margin:0;padding:0;}
+  .map-list li{padding:10px 13px;border-radius:var(--radius-sm);cursor:pointer;display:flex;gap:12px;align-items:center;font-size:14px;color:var(--ink);transition:background .12s;}
+  .map-list li:hover{background:var(--surface);}
+  .map-list li.active{background:var(--rausch-tint);color:var(--rausch-dark);font-weight:700;}
+  .map-list li .num{flex:0 0 auto;width:25px;height:25px;border-radius:50%;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);}
+  .map-list li.active .num{background:var(--rausch);color:#fff;}
+
+  @media (max-width:920px){
+    .scrolly{grid-template-columns:1fr;}
+    .info-sticky{position:sticky;top:64px;}
+    .info-card{max-height:none;}
+    .stepind{display:none;}
+  }
+
+
+/* ===== Zapouzdřená specifikace (.spec) ===== */
+.spec{
+    --ink:#161616;
+    --paper:#ffffff;
+    --muted:#5c5c5c;
+    --line:#d9d9d6;
+    --line-soft:#ececea;
+    --code-bg:#f6f6f3;
+  }
+.spec *{box-sizing:border-box;}
+.spec{-webkit-text-size-adjust:100%;}
+.spec{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Literata', Georgia, 'Times New Roman', serif;
+    font-size:18px;
+    line-height:1.72;
+    font-weight:400;
+    text-rendering:optimizeLegibility;
+    -webkit-font-smoothing:antialiased;
+  }
+.spec .doc{
+    max-width:790px;
+    margin:0 auto;
+    padding:76px 36px 120px;
+  }
+.spec /* --- Typography --- */
+  h1.title{
+    font-size:32px;
+    line-height:1.2;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 18px;
+  }
+.spec h1.section{
+    font-size:26px;
+    line-height:1.25;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:64px 0 22px;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--ink);
+  }
+.spec h2{
+    font-size:21px;
+    line-height:1.3;
+    font-weight:700;
+    margin:40px 0 12px;
+  }
+.spec h3{
+    font-size:18px;
+    line-height:1.35;
+    font-weight:700;
+    margin:28px 0 8px;
+  }
+.spec p{margin:0 0 14px;}
+.spec ul, .spec ol{margin:0 0 16px; padding-left:24px;}
+.spec li{margin:6px 0;}
+.spec strong{font-weight:700;}
+.spec a{color:inherit;}
+.spec hr{border:none; border-top:1px solid var(--line-soft); margin:36px 0;}
+.spec /* --- Blockquotes / notes --- */
+  blockquote{
+    margin:16px 0;
+    padding:2px 0 2px 20px;
+    border-left:3px solid #cfcfca;
+    color:#333;
+    font-style:italic;
+  }
+.spec blockquote p{margin:0 0 8px;}
+.spec blockquote p:last-child{margin-bottom:0;}
+.spec .note{
+    color:var(--muted);
+    font-size:15.5px;
+    font-style:italic;
+    border-left:3px solid var(--line);
+    padding:2px 0 2px 18px;
+    margin:14px 0 22px;
+  }
+.spec /* --- Code --- */
+  code{
+    font-family:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size:0.82em;
+    background:var(--code-bg);
+    border:1px solid var(--line-soft);
+    border-radius:3px;
+    padding:1px 5px;
+    word-break:break-word;
+  }
+.spec pre{
+    background:var(--code-bg);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:18px 20px;
+    overflow-x:auto;
+    margin:18px 0;
+  }
+.spec pre code{
+    background:none;
+    border:none;
+    padding:0;
+    font-size:13.5px;
+    line-height:1.65;
+    white-space:pre;
+  }
+.spec /* --- Tables --- */
+  .table-wrap{overflow-x:auto; margin:18px 0;}
+.spec table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:16px;
+    line-height:1.5;
+  }
+.spec th, .spec td{
+    border:1px solid var(--line);
+    padding:9px 13px;
+    text-align:left;
+    vertical-align:top;
+  }
+.spec thead th{
+    background:var(--code-bg);
+    font-weight:700;
+  }
+.spec s{color:var(--muted);}
+.spec /* --- Checklists --- */
+  ul.checklist{list-style:none; padding-left:0; margin:14px 0 18px;}
+.spec ul.checklist li{
+    position:relative;
+    padding-left:30px;
+    margin:7px 0;
+  }
+.spec ul.checklist li::before{
+    content:"\2610";            /* ballot box */
+    position:absolute;
+    left:0;
+    top:-0.02em;
+    font-family:'JetBrains Mono', monospace;
+    font-size:18px;
+    color:var(--ink);
+  }
+.spec ul.checklist li.done::before{
+    content:"\2611";            /* ballot box with check */
+  }
+.spec .footer{
+    margin-top:56px;
+    padding-top:18px;
+    border-top:1px solid var(--line-soft);
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.6;
+    font-style:italic;
+  }
+.spec /* --- Responsive --- */
+  @media (max-width:620px){
+    body{font-size:16px; line-height:1.66;}
+    .doc{padding:40px 18px 80px;}
+    h1.title{font-size:25px;}
+    h1.section{font-size:21px; margin:46px 0 18px;}
+    h2{font-size:18.5px;}
+    h3{font-size:16.5px;}
+    table{font-size:14px;}
+    th,td{padding:7px 9px;}
+    pre code{font-size:12px;}
+  }
+.spec /* --- Print --- */
+  @media print{
+    body{font-size:11.5pt; line-height:1.5;}
+    .doc{max-width:none; padding:0;}
+    h1.section{border-bottom:1.5pt solid #000;}
+    pre,code{background:#f4f4f4;}
+    blockquote,.note{color:#000;}
+    a{text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="reading-progress"><div id="rp"></div></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="orb" aria-hidden="true"></div>
+    <div>
+      <h1>Specifikace, která drží projekt pohromadě</h1>
+      <p>Vibe-coding workshop · Ostrava · 2.&nbsp;6.&nbsp;2026 · Michal&nbsp;Bočvarov</p>
+    </div>
+  </div>
+  <div class="controls">
+    <span class="stepind" id="stepLabel">Sekce <b>1</b> z 17</span>
+    <button class="btn" id="mapBtn" title="Přehled sekcí (M)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Přehled
+    </button>
+    <button class="btn icon" id="fsBtn" title="Celá obrazovka (F)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Úvod -->
+<section class="hero" id="introHero">
+  <div class="eyebrow">Vibe-coding workshop</div>
+  <h1>Specifikace, která drží projekt pohromadě</h1>
+  <p class="lead">Projdeme vyplněnou specifikaci rezervačního systému kadeřnictví — odshora dolů. Jak budeš <strong>posouvat stránku</strong>, vpravo se sám naskakuje výklad k sekci, u které právě jsi: <strong>proč je důležitá</strong>, <strong>k čemu slouží</strong>, <strong>co přinese</strong> a <strong>jak vypadá chyba</strong>, když chybí.</p>
+  <div class="meta">
+    <span class="chip">📅 2.&nbsp;6.&nbsp;2026</span>
+    <span class="chip">📍 Ostrava</span>
+    <span class="chip">🧩 SDD&nbsp;+&nbsp;TDD&nbsp;+&nbsp;BDD</span>
+  </div>
+  <div class="lektor">Lektor: <strong>Michal Bočvarov</strong></div>
+  <div class="scroll-hint">Posouvej dolů a začni
+    <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</section>
+
+<!-- Scrollytelling -->
+<div class="scrolly">
+  <div class="doc-col">
+    <div class="spec-shell">
+      <article class="spec">
+        <main class="doc">
+
+  <h1 class="title">📋 Specifikace: Rezervační systém kadeřnictví (vyplněný příklad)</h1>
+
+  <p class="note">Tento dokument je <strong>ukázkový vyplněný „cílový stav"</strong> univerzální specifikační šablony (SDD + TDD + BDD) na konkrétním use-case: <em>webová stránka kadeřnictví s rezervačním systémem, kde si zákazník sám rezervuje termín</em>. Zástupné texty jsou nahrazeny reálným obsahem, nápovědy odstraněny.</p>
+
+  <hr>
+
+  <!-- HLAVIČKA -->
+  <h2 id="sec-hlavicka" data-sec="sec-hlavicka" class="js-sec">🧭 Hlavička dokumentu</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Pole</th><th>Hodnota</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Název projektu / funkce</strong></td><td>Rezervační web — Kadeřnictví U Lucie</td></tr>
+      <tr><td><strong>Verze</strong></td><td><code>1.0</code></td></tr>
+      <tr><td><strong>Stav</strong></td><td><s>Návrh</s> · <strong>Schváleno</strong> · <s>Implementováno</s> · <s>Hotovo</s></td></tr>
+      <tr><td><strong>Autor</strong></td><td>Lucie N. (majitelka) + vývojář</td></tr>
+      <tr><td><strong>Vytvořeno</strong></td><td>2026-05-20</td></tr>
+      <tr><td><strong>Poslední úprava</strong></td><td>2026-06-01</td></tr>
+      <tr><td><strong>Použité AI nástroje</strong></td><td>Claude Code · GitHub Spec Kit</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 1. SPECIFIKACE -->
+  <h1 id="sec-1" data-sec="sec-1" class="section js-sec">1. SPECIFIKACE — <em>CO a PROČ stavíme</em> <em>(povinné)</em></h1>
+
+  <h2 id="sec-1-1" data-sec="sec-1-1" class="js-sec">1.1 Záměr a kontext (PROČ)</h2>
+  <ul>
+    <li><strong>Problém:</strong> Malé kadeřnictví (1 majitelka + 2 kadeřnice) přijímá rezervace telefonicky a přes Instagram DM. Telefon vyrušuje při stříhání, vznikají chyby (dvojité rezervace, zapomenuté termíny zapsané jen na papíře) a zákazníci nemůžou rezervovat mimo pracovní dobu — typicky večer, kdy si to chtějí zařídit.</li>
+    <li><strong>Cíl / hodnota:</strong> Zákazníci si rezervují termín <strong>sami, online, 24/7</strong>, bez telefonátu. Personál se nemusí vyrušovat, omezí se dvojité rezervace a sníží se počet nedostavení (no-show) díky automatickým připomínkám. Úspěch poznáme podle podílu online rezervací a poklesu no-show (viz 1.6).</li>
+    <li><strong>Mimo rozsah (Non-goals):</strong>
+      <ul>
+        <li>V této verzi <strong>neřešíme online platby ani zálohy</strong> (platí se na místě).</li>
+        <li><strong>Žádný věrnostní program</strong> ani slevové kódy.</li>
+        <li><strong>Žádný e-shop</strong> s produkty.</li>
+        <li><strong>Žádná nativní mobilní aplikace</strong> (jen responzivní web).</li>
+        <li><strong>Pouze jedna pobočka</strong> — neřešíme správu více salonů.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2 id="sec-1-2" data-sec="sec-1-2" class="js-sec">1.2 Uživatelské scénáře — <em>co uživatel dělá</em></h2>
+
+  <h3>User Story 1 — Zákazník si rezervuje termín (Priorita: <strong>P1</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>online vybrat službu, kadeřnici a volný čas a rezervovat termín</strong>, abych <strong>nemusel/a volat během otevírací doby</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Proč tato priorita:</strong> Bez tohoto scénáře produkt nemá smysl — je to jádro celého systému.</li>
+    <li><strong>Akceptační scénáře</strong> (Given–When–Then):
+      <ol>
+        <li><strong>Given</strong> salon má na pondělí volné sloty · <strong>When</strong> zákazník vybere „Dámský střih", kadeřnici Lucii a slot 10:00 a vyplní jméno, telefon a e-mail · <strong>Then</strong> systém rezervaci vytvoří, slot označí jako obsazený a zobrazí potvrzení.</li>
+        <li><strong>Given</strong> rezervace byla vytvořena · <strong>When</strong> systém dokončí uložení · <strong>Then</strong> zákazník obdrží potvrzovací e-mail s datem, časem, službou, jménem kadeřnice a odkazem na zrušení.</li>
+        <li><strong>Given</strong> zákazník nevyplnil e-mail nebo zadal neplatný formát · <strong>When</strong> odešle formulář · <strong>Then</strong> systém rezervaci nevytvoří a zobrazí konkrétní chybu u daného pole.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 2 — Zákazník zruší nebo přesune termín (Priorita: <strong>P1</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>zrušit nebo přesunout svou rezervaci přes odkaz z e-mailu</strong>, abych <strong>nemusel/a volat a uvolnil/a slot pro někoho jiného</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Proč tato priorita:</strong> Zrušení bez účtu uvolňuje sloty a snižuje no-show; je to nutný protějšek k US1.</li>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> zákazník má potvrzenou rezervaci a odkaz z e-mailu · <strong>When</strong> klikne na „Zrušit termín" více než 24 h předem · <strong>Then</strong> systém rezervaci zruší, slot uvolní a pošle potvrzení o zrušení.</li>
+        <li><strong>Given</strong> do termínu zbývá méně než 24 h · <strong>When</strong> zákazník klikne na zrušení · <strong>Then</strong> systém zobrazí, že online zrušení už není možné, a nabídne telefon na salon.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 3 — Personál spravuje kalendář (Priorita: <strong>P2</strong>)</h3>
+  <blockquote><p>Jako <strong>kadeřnice</strong> chci <strong>vidět všechny rezervace v denním/týdenním kalendáři a ručně přidat či zablokovat čas</strong>, abych <strong>měla přehled a mohla zapsat i telefonickou rezervaci</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> personál je přihlášený · <strong>When</strong> otevře kalendář na konkrétní den · <strong>Then</strong> vidí všechny rezervace s jménem zákazníka, službou a kontaktem.</li>
+        <li><strong>Given</strong> personál si chce dát pauzu · <strong>When</strong> zablokuje čas 12:00–12:30 · <strong>Then</strong> tento slot přestane být zákazníkům nabízen jako volný.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3>User Story 4 — Automatická připomínka (Priorita: <strong>P3</strong>)</h3>
+  <blockquote><p>Jako <strong>zákazník</strong> chci <strong>dostat připomínku den předem</strong>, abych <strong>na termín nezapomněl/a</strong>.</p></blockquote>
+  <ul>
+    <li><strong>Akceptační scénáře:</strong>
+      <ol>
+        <li><strong>Given</strong> zákazník má potvrzenou rezervaci na zítřek · <strong>When</strong> nastane čas 24 h před termínem · <strong>Then</strong> systém odešle připomínkový e-mail.</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h3 id="sec-1-2x" data-sec="sec-1-2x" class="js-sec">1.2.x Hraniční případy (Edge Cases)</h3>
+  <ul>
+    <li><strong>Prázdný / neúplný formulář:</strong> chybí jméno, telefon nebo e-mail → rezervace se nevytvoří, chyba u konkrétního pole.</li>
+    <li><strong>Neplatný e-mail / telefon:</strong> nevalidní formát → blokace s nápovědou ke správnému formátu.</li>
+    <li><strong>Slot mezitím obsazen:</strong> zákazník otevřel stránku, slot byl volný, ale než odeslal, někdo ho zabral → systém odmítne a nabídne nejbližší volné časy.</li>
+    <li><strong>Souběžná rezervace stejného slotu:</strong> dva zákazníci kliknou „Rezervovat" na stejný slot ve stejnou vteřinu → potvrdí se <strong>pouze první</strong>, druhý dostane hlášku „slot už není volný" (atomická kontrola na úrovni DB).</li>
+    <li><strong>Rezervace v minulosti / mimo otevírací dobu:</strong> systém takové sloty vůbec nenabízí; pokus o přímé odeslání odmítne.</li>
+    <li><strong>Zavřený den (svátek, dovolená):</strong> den se nenabízí.</li>
+    <li><strong>Kadeřnice nemá v daný den směnu:</strong> její sloty se v ten den nezobrazí.</li>
+    <li><strong>Služba je delší než zbývající čas do konce směny:</strong> slot se nenabídne (např. barvení 90 min v 18:30, když se zavírá v 19:00).</li>
+    <li><strong>Výpadek odeslání e-mailu:</strong> rezervace zůstane platná, e-mail se zařadí k opětovnému odeslání; zákazník vidí potvrzení i na obrazovce.</li>
+    <li><strong>Vícenásobné kliknutí na „Rezervovat":</strong> systém vytvoří jen jednu rezervaci (idempotence / blokace tlačítka).</li>
+  </ul>
+
+  <h2 id="sec-1-3" data-sec="sec-1-3" class="js-sec">1.3 Funkční požadavky — <em>co systém musí umět</em></h2>
+  <ul>
+    <li><strong>FR-001:</strong> Systém MUSÍ zobrazit seznam služeb s názvem, dobou trvání a cenou.</li>
+    <li><strong>FR-002:</strong> Systém MUSÍ umožnit výběr konkrétní kadeřnice, nebo volbu „kterákoli volná".</li>
+    <li><strong>FR-003:</strong> Když zákazník vybere službu a kadeřnici, systém MUSÍ zobrazit pouze volné sloty odpovídající délce služby a směně kadeřnice.</li>
+    <li><strong>FR-004:</strong> Systém MUSÍ zabránit rezervaci slotu, který se překrývá s existující rezervací (žádné dvojí rezervace).</li>
+    <li><strong>FR-005:</strong> Když zákazník odesílá rezervaci, systém MUSÍ vyžadovat jméno, telefon a e-mail; e-mail MUSÍ být ve validním formátu.</li>
+    <li><strong>FR-006:</strong> Když je rezervace vytvořena, systém MUSÍ odeslat potvrzovací e-mail s detaily a odkazem na zrušení/přesun.</li>
+    <li><strong>FR-007:</strong> Systém MUSÍ umožnit zrušení rezervace přes unikátní odkaz <strong>bez nutnosti zakládat účet</strong>.</li>
+    <li><strong>FR-008:</strong> Pokud do termínu zbývá méně než 24 h, systém MUSÍ online zrušení odmítnout a zobrazit telefonní kontakt na salon.</li>
+    <li><strong>FR-009:</strong> Systém MUSÍ bránit rezervaci v minulosti a mimo otevírací dobu.</li>
+    <li><strong>FR-010:</strong> Pokud dva zákazníci současně rezervují stejný slot, systém MUSÍ potvrdit pouze prvního a druhému zobrazit, že slot už není volný (atomická kontrola).</li>
+    <li><strong>FR-011:</strong> Systém MUSÍ respektovat zavřené dny (svátky, dovolená) a tyto dny nenabízet.</li>
+    <li><strong>FR-012:</strong> Personál MUSÍ mít zabezpečené (přihlášené) rozhraní pro zobrazení a správu rezervací v kalendáři.</li>
+    <li><strong>FR-013:</strong> Personál MUSÍ moci ručně zablokovat čas a vytvořit rezervaci za telefonujícího zákazníka.</li>
+    <li><strong>FR-014:</strong> Kde je zapnuté připomínání, systém MUSÍ odeslat připomínku 24 h před termínem.</li>
+    <li><strong>FR-015:</strong> Systém MUSÍ uchovávat osobní údaje zákazníků v souladu s GDPR. <code>[NEEDS CLARIFICATION: jak dlouho data uchovávat po proběhlém termínu? Jaký je právní základ a způsob výmazu?]</code></li>
+  </ul>
+
+  <h2 id="sec-1-4" data-sec="sec-1-4" class="js-sec">1.4 Nefunkční požadavky — <em>jak DOBŘE</em></h2>
+  <ul>
+    <li><strong>Výkon:</strong> Stránka s výběrem termínu se načte do 2 s na mobilu; API pro dostupné sloty odpoví do 300 ms při běžné zátěži.</li>
+    <li><strong>Bezpečnost:</strong> Žádné tajné klíče v kódu (jen v proměnných prostředí); admin za přihlášením; rate-limiting na rezervační endpoint (anti-spam); CSRF ochrana formulářů; validace všech vstupů na serveru, ne jen v prohlížeči.</li>
+    <li><strong>Použitelnost / přístupnost:</strong> Mobile-first (většina zákazníků rezervuje z mobilu); WCAG 2.1 AA; celý proces ovladatelný klávesnicí.</li>
+    <li><strong>Spolehlivost / dostupnost:</strong> Dostupnost ≥ 99,5 %; potvrzovací e-mail odeslán do 1 minuty; zrušení je idempotentní (opakované kliknutí nezpůsobí chybu).</li>
+    <li><strong>Náklady / limity:</strong> Provoz do ~10 €/měsíc na malém hostingu; bezplatný/levný e-mailový kanál.</li>
+  </ul>
+
+  <h2 id="sec-1-5" data-sec="sec-1-5" class="js-sec">1.5 Datové entity</h2>
+  <ul>
+    <li><strong>Služba (Service):</strong> název, doba_trvání_min, cena, popis. Vztah N:M ke <em>Kadeřnice</em> (která kadeřnice danou službu dělá).</li>
+    <li><strong>Kadeřnice (Stylist):</strong> jméno, foto, krátké bio. Vztah 1:N ke <em>Směna</em> a 1:N k <em>Rezervace</em>.</li>
+    <li><strong>Směna (Shift):</strong> kadeřnice, datum, od, do. Definuje, kdy je kadeřnice dostupná.</li>
+    <li><strong>Rezervace (Booking):</strong> služba, kadeřnice, zákazník, začátek, konec, stav (<code>potvrzeno</code> / <code>zrušeno</code>), unikátní_token. Vztahy N:1 ke <em>Službě</em>, <em>Kadeřnici</em>, <em>Zákazníkovi</em>.</li>
+    <li><strong>Zákazník (Customer):</strong> jméno, telefon, e-mail (kontaktní údaje bez uživatelského účtu). Vztah 1:N k <em>Rezervace</em>.</li>
+    <li><strong>Zavřeno (Closure):</strong> datum, důvod (svátek / dovolená). Vyřazuje den z nabídky.</li>
+  </ul>
+
+  <h2 id="sec-1-6" data-sec="sec-1-6" class="js-sec">1.6 Kritéria úspěchu — <em>měřitelná</em></h2>
+  <ul>
+    <li><strong>SC-001:</strong> Do 3 měsíců od spuštění proběhne ≥ 60 % rezervací online (bez telefonu).</li>
+    <li><strong>SC-002:</strong> Zákazník dokončí rezervaci za ≤ 90 sekund (od výběru služby po potvrzení).</li>
+    <li><strong>SC-003:</strong> Během prvních 3 měsíců nevznikne <strong>žádná</strong> dvojitá rezervace.</li>
+    <li><strong>SC-004:</strong> Míra nedostavení (no-show) klesne o ≥ 20 % oproti období před připomínkami.</li>
+    <li><strong>SC-005:</strong> ≥ 95 % potvrzovacích e-mailů je doručeno do 1 minuty.</li>
+  </ul>
+
+  <h2 id="sec-1-7" data-sec="sec-1-7" class="js-sec">1.7 Předpoklady a otevřené otázky</h2>
+  <ul>
+    <li><strong>Předpoklady:</strong> Jeden salon, max. 4 kadeřnice; zákazník nepotřebuje účet; e-mail je primární komunikační kanál; provozní doba je relativně stabilní.</li>
+    <li><strong>Otevřené otázky:</strong>
+      <ul>
+        <li>Přidat SMS připomínky? (náklady vs. dosah)</li>
+        <li>Zavést malou zálohu proti opakovaným no-show?</li>
+        <li>Bude web vícejazyčný (CZ/EN)?</li>
+        <li>Retence osobních údajů — viz <code>[NEEDS CLARIFICATION]</code> u FR-015.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <!-- 2. ÚSTAVA -->
+  <h1 id="sec-2" data-sec="sec-2" class="section js-sec">2. ÚSTAVA PROJEKTU — <em>neměnné principy</em></h1>
+  <h2>Principy</h2>
+  <ol>
+    <li><strong>Kvalita kódu:</strong> Dodržuj idiomy TypeScriptu. Používej ESLint (linter) a Prettier (formatter); každý merge musí projít oběma.</li>
+    <li><strong>Testování:</strong> Žádný produkční kód bez předem padajícího testu (TDD). Minimální pokrytí kritické logiky (dostupnost slotů, kolize rezervací) <strong>90 %</strong>.</li>
+    <li><strong>Jednoduchost:</strong> Nejjednodušší řešení, které projde testy. Žádné předčasné zobecňování (např. zatím neřeš multi-salon).</li>
+    <li><strong>Bezpečnost:</strong> Nikdy necommituj tajné klíče. Validuj všechny vstupy na serveru. Osobní údaje jen v nezbytném rozsahu.</li>
+    <li><strong>Malé změny:</strong> Strukturální (refactor) a behaviorální (nová funkce) změny odděluj do různých commitů.</li>
+    <li><strong>Struktura repozitáře:</strong> <code>src/</code> aplikace, <code>tests/</code> testy, <code>prisma/</code> databázové schéma, <code>features/</code> BDD scénáře, dokumentace v kořeni.</li>
+  </ol>
+
+  <!-- 3. PLÁN -->
+  <h1 id="sec-3" data-sec="sec-3" class="section js-sec">3. PLÁN IMPLEMENTACE — <em>JAK to postavíme</em></h1>
+
+  <h2>3.1 Souhrn</h2>
+  <p>Postavíme full-stack webovou aplikaci v Next.js (jeden projekt pro frontend i backend API). Data uložíme v PostgreSQL přes ORM Prisma. Kolize rezervací ošetříme na úrovni databáze (transakce + unikátní omezení), aby nešly vytvořit dvě rezervace na stejný slot.</p>
+
+  <h2>3.2 Technický kontext</h2>
+  <p class="note">Pro úplného začátečníka: každá řádka říká <em>čím</em> se bude stavět. Jsou to <strong>jedna</strong> z možných voleb — stejnou specifikaci (část 1) lze postavit i jiným stackem.</p>
+  <ul>
+    <li><strong>Jazyk / verze:</strong> TypeScript 5.x na Node.js 20 LTS.</li>
+    <li><strong>Hlavní závislosti / frameworky:</strong> Next.js 14 (App Router) — frontend i API v jednom; Prisma (práce s databází); Resend nebo SMTP (e-maily).</li>
+    <li><strong>Úložiště / databáze:</strong> PostgreSQL (lokálně i v produkci přes managed Postgres).</li>
+    <li><strong>Testovací framework:</strong> Vitest (jednotkové testy) · Playwright (end-to-end v prohlížeči) · Cucumber.js (BDD scénáře z části 5).</li>
+    <li><strong>Cílová platforma:</strong> Responzivní web, mobile-first; hosting na Vercelu.</li>
+  </ul>
+
+  <h2>3.3 Kontrola ústavy (brána) ✅</h2>
+  <ul class="checklist">
+    <li class="done">Plán neporušuje žádný princip z Ústavy projektu.</li>
+    <li class="done">Případná porušení jsou zdůvodněna níže (3.5) — <em>žádná nejsou.</em></li>
+  </ul>
+
+  <h2>3.4 Struktura projektu</h2>
+  <pre><code>kadernictvi-rezervace/
+├── src/
+│   ├── app/            # stránky a API routy (Next.js App Router)
+│   ├── lib/            # doménová logika (dostupnost slotů, kolize)
+│   └── components/     # UI komponenty
+├── prisma/
+│   └── schema.prisma   # databázové schéma (entity z 1.5)
+├── tests/              # jednotkové a integrační testy (Vitest)
+├── features/           # BDD scénáře *.feature (Cucumber)
+├── docs/               # dokumentace
+└── AGENTS.md           # pravidla pro AI agenty (část 6)</code></pre>
+
+  <h2>3.5 Sledování složitosti</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Co porušujeme</th><th>Proč je to nutné</th><th>Jednodušší varianta, kterou jsme zamítli</th></tr></thead>
+    <tbody>
+      <tr><td><em>(zatím nic)</em></td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- 4. ÚKOLY -->
+  <h1 id="sec-4" data-sec="sec-4" class="section js-sec">4. ÚKOLY — <em>rozpad na malé kroky</em></h1>
+  <p class="note"><strong>Legenda:</strong> <code>T001</code> = pořadí · <code>[P]</code> = lze dělat paralelně · <code>[US1]</code> = patří k User Story 1.</p>
+
+  <h2>Fáze 1: Příprava</h2>
+  <ul class="checklist">
+    <li><strong>T001</strong> Vytvoř projekt Next.js + TypeScript a strukturu složek.</li>
+    <li><strong>T002</strong> <code>[P]</code> Nastav ESLint a Prettier.</li>
+    <li><strong>T003</strong> <code>[P]</code> Nastav připojení k PostgreSQL a Prisma.</li>
+  </ul>
+
+  <h2>Fáze 2: Základ <em>(hotové před prací na user stories)</em></h2>
+  <ul class="checklist">
+    <li><strong>T004</strong> <code>[P]</code> Nastav testovací frameworky (Vitest, Playwright, Cucumber).</li>
+    <li><strong>T005</strong> Definuj datové modely v <code>prisma/schema.prisma</code> (Služba, Kadeřnice, Směna, Rezervace, Zákazník, Zavřeno).</li>
+    <li><strong>T006</strong> Naplň testovací data (2–3 kadeřnice, pár služeb, směny).</li>
+  </ul>
+
+  <h2>Fáze 3: User Story 1 — rezervace (P1)</h2>
+  <ul class="checklist">
+    <li><strong>T007</strong> <code>[US1]</code> Napiš padající test pro výpočet volných slotů (délka služby + směna + existující rezervace) v <code>tests/availability.test.ts</code>.</li>
+    <li><strong>T008</strong> <code>[US1]</code> Implementuj minimální logiku dostupnosti, aby test prošel.</li>
+    <li><strong>T009</strong> <code>[US1]</code> Napiš padající test pro kolizi rezervací (souběžný zápis → potvrdí se jen jeden).</li>
+    <li><strong>T010</strong> <code>[US1]</code> Implementuj atomické vytvoření rezervace (transakce + unikátní omezení).</li>
+    <li><strong>T011</strong> <code>[US1]</code> Vytvoř formulář a stránku výběru služby/kadeřnice/času.</li>
+    <li><strong>T012</strong> <code>[US1]</code> Odeslání potvrzovacího e-mailu s odkazem na zrušení.</li>
+    <li><strong>T013</strong> <code>[US1]</code> Refactor (vyčisti kód beze změny chování).</li>
+  </ul>
+
+  <h2>Fáze 4: User Story 2 — zrušení/přesun (P1)</h2>
+  <ul class="checklist">
+    <li><strong>T014</strong> <code>[US2]</code> Napiš padající test pro zrušení přes token (vč. pravidla &lt; 24 h).</li>
+    <li><strong>T015</strong> <code>[US2]</code> Implementuj stránku a logiku zrušení/přesunu přes unikátní odkaz.</li>
+  </ul>
+
+  <h2>Fáze 5: User Story 3 — správa personálem (P2)</h2>
+  <ul class="checklist">
+    <li><strong>T016</strong> <code>[US3]</code> Přihlášení personálu + kalendář rezervací.</li>
+    <li><strong>T017</strong> <code>[US3]</code> Ruční blokace času a rezervace za telefonujícího zákazníka.</li>
+  </ul>
+
+  <h2>Fáze 6: User Story 4 — připomínky (P3)</h2>
+  <ul class="checklist">
+    <li><strong>T018</strong> <code>[US4]</code> Naplánovaná úloha odesílající připomínku 24 h předem.</li>
+  </ul>
+
+  <h2>Fáze 7: Dokončení (Polish)</h2>
+  <ul class="checklist">
+    <li><strong>T019</strong> Ošetři všechny hraniční případy z 1.2.x.</li>
+    <li><strong>T020</strong> Doplň dokumentaci, zkontroluj pokrytí testy a přístupnost (WCAG).</li>
+  </ul>
+
+  <!-- 5. BDD -->
+  <h1 id="sec-5" data-sec="sec-5" class="section js-sec">5. BDD SCÉNÁŘE — <em>chování viditelné uživateli</em></h1>
+  <p class="note">V praxi tato část žije v souboru <code>features/rezervace.feature</code> a je spustitelná přes Cucumber.</p>
+  <pre><code># language: cs
+Funkce: Online rezervace termínu
+  Jako zákazník
+  Chci si sám rezervovat termín v kadeřnictví
+  Abych nemusel volat během otevírací doby
+
+  Scénář: Úspěšná rezervace volného termínu (happy path)
+    Pokud je v pondělí volný slot v 10:00 u kadeřnice Lucie
+    Když vyberu službu "Dámský střih", kadeřnici "Lucie" a čas 10:00
+    A vyplním jméno, telefon a platný e-mail
+    A potvrdím rezervaci
+    Pak je rezervace vytvořena
+    A slot 10:00 je označen jako obsazený
+    A obdržím potvrzovací e-mail s odkazem na zrušení
+
+  Scénář: Slot byl mezitím obsazen (edge case)
+    Pokud jsem otevřel stránku, když byl slot v 10:00 volný
+    A někdo jiný mezitím rezervoval tentýž slot
+    Když potvrdím rezervaci na 10:00
+    Pak rezervace není vytvořena
+    A vidím hlášku, že slot už není volný
+    A jsou mi nabídnuty nejbližší volné časy
+
+  Scénář: Pozdní pokus o zrušení (edge case)
+    Pokud mám potvrzenou rezervaci na termín za 3 hodiny
+    Když kliknu v e-mailu na "Zrušit termín"
+    Pak online zrušení není provedeno
+    A vidím telefonní kontakt na salon</code></pre>
+
+  <!-- 6. AGENTS.md -->
+  <h1 id="sec-6" data-sec="sec-6" class="section js-sec">6. AGENTS.md — <em>pravidla pro AI agenta</em></h1>
+  <p class="note">V praxi tato část žije v souboru <code>AGENTS.md</code> v kořeni repozitáře a načítá se automaticky.</p>
+  <pre><code># Pokyny pro AI agenty
+
+## Projekt
+Rezervační web pro malé kadeřnictví. Next.js 14 (App Router) + TypeScript 5
++ Prisma + PostgreSQL. Zákazník rezervuje bez účtu, personál má přihlášení.
+
+## Příkazy
+- Build:     npm run build
+- Test:      npm test
+- Lint:      npm run lint
+- Spuštění:  npm run dev
+
+## Workflow
+- Nejdřív plán (Plan Mode / read-only), pak teprve kód.
+- TDD: padající test → minimální kód → refactor.
+- NEMĚŇ testy jen proto, aby prošly. Oprav kód.
+- Drž se Specifikace (část 1) a Plánu (část 3). Při nejasnosti se zeptej.
+
+## Mantinely (hranice)
+- ✅ Vždy:    spusť testy před commitem; commituj malé, logické celky;
+             kolize rezervací řeš atomicky (transakce + unikátní omezení).
+- ⚠️ Zeptej se: změny schématu v prisma/; přidání nové závislosti;
+             změna pravidel zrušení (24h).
+- 🚫 Nikdy:  necommituj tajné klíče ani .env; needituj node_modules/;
+             neukládej víc osobních údajů, než je nutné.
+
+## Příklad správného stylu
+// Volné sloty počítej z (směna − existující rezervace), nikdy "zkontroluj
+// a pak ulož" mimo transakci — jinak vznikne dvojitá rezervace.
+const booking = await prisma.$transaction(async (tx) =&gt; { /* ... */ });</code></pre>
+
+  <!-- 7. DoD -->
+  <h1 id="sec-7" data-sec="sec-7" class="section js-sec">✅ 7. Definice hotového (Definition of Done)</h1>
+  <ul class="checklist">
+    <li>Všechny akceptační scénáře (1.2) procházejí jako automatické testy.</li>
+    <li>Pokryté hraniční případy (1.2.x) — zvlášť kolize slotů a pozdní zrušení.</li>
+    <li>Žádné nevyřešené <code>[NEEDS CLARIFICATION]</code> (vč. GDPR retence u FR-015).</li>
+    <li>Kód prochází ESLint; všechny testy zelené; pokrytí kritické logiky ≥ 90 %.</li>
+    <li>Splněna měřitelná kritéria úspěchu (1.6), kde je lze ověřit už při dodání (SC-002, SC-003, SC-005).</li>
+    <li>Specifikace aktualizována podle finální implementace (proti spec driftu).</li>
+    <li>Kód jsem přečetl/a a rozumím mu (neslepá důvěra v AI).</li>
+  </ul>
+
+  <!-- 8. ÚDRŽBA -->
+  <h1 id="sec-8" data-sec="sec-8" class="section js-sec">🔄 8. Údržba a relevance</h1>
+  <ul class="checklist">
+    <li><strong>Jediný zdroj pravdy:</strong> každou změnu (nová služba, jiná pravidla zrušení) promítni nejdřív sem, pak do kódu.</li>
+    <li><strong>Verzuj v Gitu:</strong> tento soubor commituj spolu s kódem přes pull request.</li>
+    <li><strong>Krátké smyčky:</strong> spec → implementuj → uč se → aktualizuj spec.</li>
+    <li><strong>Testy v CI:</strong> akceptační i jednotkové testy běží automaticky a odhalí spec drift.</li>
+    <li><strong>Udržuj historii revizí</strong> (níže).</li>
+  </ul>
+
+  <h2>Historie revizí</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Datum</th><th>Verze</th><th>Co se změnilo</th><th>Autor</th></tr></thead>
+    <tbody>
+      <tr><td>2026-05-20</td><td><code>0.1</code></td><td>Počáteční verze.</td><td>Lucie N.</td></tr>
+      <tr><td>2026-06-01</td><td><code>1.0</code></td><td>Doplněny edge cases, NFR, plán a BDD; schváleno.</td><td>Lucie N. + vývojář</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="footer">Vyplněný příklad univerzální specifikační šablony (specifikace, ústava, plán, úkoly, BDD, pravidla pro AI agenty) na use-case rezervačního webu kadeřnictví. Konkrétní technologie (Next.js, Prisma, …) jsou jen jednou z možných realizací — ber je jako výchozí bod, ne dogma.</p>
+
+</main>
+      </article>
+    </div>
+  </div>
+  <div class="info-col">
+    <div class="info-sticky" id="infoSticky"></div>
+  </div>
+</div>
+
+<!-- Závěr -->
+<section class="hero" id="outroHero">
+  <div class="eyebrow">Děkuji za pozornost</div>
+  <h1>Otázky, nápady nebo konzultace?</h1>
+  <p class="lead">Specifikace není byrokracie — je to nejlevnější způsob, jak říct AI i sobě, co vlastně stavíme. Když si s ní budeš chtít pohrát nebo budeš mít dotaz, ozvi se.</p>
+  <div class="contact">
+    <a href="https://wa.me/420774411716" target="_blank" rel="noopener">💬 WhatsApp 774&nbsp;411&nbsp;716</a>
+    <a href="mailto:bocvarov@gmail.com">✉️ bocvarov@gmail.com</a>
+  </div>
+  <div class="note-wa">Pište mi prosím na WhatsApp.</div>
+  <div class="lektor" style="margin-top:26px;"><strong>Michal Bočvarov</strong> · Vibe-coding workshop · Ostrava · 2.&nbsp;6.&nbsp;2026</div>
+</section>
+
+<div class="overlay" id="mapOverlay">
+  <div class="map-card">
+    <h3>Přehled sekcí</h3>
+    <p class="sub">Klikni na sekci a stránka tě tam plynule posune.</p>
+    <ul class="map-list" id="mapList"></ul>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  "use strict";
+  var SECTIONS = [{"id": "sec-hlavicka", "kap": "Hlavička dokumentu", "nazev": "🧭 Hlavička dokumentu", "proc": "Hlavička je „štítek na krabici“. Bez ní za měsíc nepoznáš, jestli čteš aktuální verzi, nebo dávno přepsanou poznámku. U dokumentu, který se vyvíjí s kódem, jsou údaje „kdy naposledy upraveno“ a „stav“ stejně důležité jako samotný obsah.", "cil": "Dát komukoli — i tobě za půl roku, i AI asistentovi — okamžitou orientaci: o co jde, v jaké je to fázi, kdo na tom dělá a jakými nástroji.", "dosah": "Zabráníme práci podle zastaralé verze. Stojí tu <strong>Stav: Schváleno</strong> a <strong>Verze 1.0</strong> — web se podle dokumentu už smí stavět. Kdyby tam bylo „Návrh“, víš, že obsah ještě není závazný.", "chyba": "Necháš v projektu tři soubory s nápady a po týdnu nevíš, který platí. Začneš programovat podle starého pravidla zrušení (48 h místo aktuálních 24 h) a půl dne předěláváš něco, co dávno neplatí."}, {"id": "sec-1", "kap": "Část 1", "nazev": "1. Specifikace — CO a PROČ stavíme", "proc": "Srdce celého dokumentu. Specifikace popisuje <strong>záměr a chování</strong>, nikdy technologii. „Zákazník vybere volný slot, potvrdí a uvidí potvrzení“ patří sem; „použijeme Next.js a Prisma“ patří až do plánu (část 3).", "cil": "Oddělit <strong>CO a PROČ</strong> stavíme od toho <strong>JAK</strong>. Právě tohle oddělení začátečníci nejčastěji pletou.", "dosah": "Čitelné zadání srozumitelné i netechnické majitelce salonu, nezaplevelené technickými detaily.", "chyba": "Když do specifikace prosákne „uložíme do PostgreSQL tabulky bookings“, majitelka přestane rozumět a zbytečně se zavážeš k jednomu řešení dřív, než zvážíš alternativy."}, {"id": "sec-1-1", "kap": "Sekce 1.1", "nazev": "1.1 Záměr a kontext (PROČ)", "proc": "AI (a často i člověk) udělá přesně to, co řekneš — ne to, cos myslel. Bez „proč“ asistent optimalizuje na špatnou věc. Sekce „Mimo rozsah“ (non-goals) brání tomu, aby projekt nabobtnal tichým přidáváním „a ještě by to mohlo…“.", "cil": "Zachytit problém, hodnotu a hranice dřív, než se napíše řádek kódu. Jaký problém řeším? (telefon ruší při stříhání, dvojité rezervace) Pro koho? Co vědomě nechávám stranou?", "dosah": "Měřítko pro všechna další rozhodnutí. „Mám přidat tuhle funkci?“ → porovnáš se záměrem a hned víš. Drží projekt malý a dokončitelný.", "chyba": "Zadáš „udělej rezervační web pro kadeřnictví“ a dostaneš online platby, věrnostní body, e-shop a iOS aplikaci — nic z toho jsi nechtěl. Proto specifikace vyjmenovává non-goaly (žádné platby, žádný e-shop, jedna pobočka)."}, {"id": "sec-1-2", "kap": "Sekce 1.2", "nazev": "1.2 Uživatelské scénáře", "proc": "Lidé i jazykové modely chápou <strong>konkrétní příklady</strong> líp než abstrakce. „Systém spravuje rezervace“ je mlhavé; „když zákazník vybere obsazený slot 10:00, uvidí nejbližší volné časy“ je jednoznačné. Priority (P1/P2/P3) brání utopení času v okrajových vychytávkách.", "cil": "Popsat chování očima uživatele přes scénáře <strong>Dáno–Když–Pak</strong> (Given–When–Then) a seřadit podle nutnosti. Rezervace a zrušení = P1, správa kalendáře = P2, připomínky = P3. Každý scénář je polotovar budoucího testu.", "dosah": "Přesné, otestovatelné zadání. Z každého „Pak“ se dá udělat kontrola. Priority navíc určí pořadí práce.", "chyba": "Napíšeš jen „zákazník si rezervuje termín“. AI to zvládne pro volný slot, ale při obsazeném spadne nebo vytvoří dvojitou rezervaci — ten scénář jsi nikdy nezmínil."}, {"id": "sec-1-2x", "kap": "Sekce 1.2.x", "nazev": "1.2.x Hraniční případy (edge cases)", "proc": "Hraniční případy (edge cases) jsou přesně tam, kde AI nejvíc chybuje a kde aplikace nejčastěji padají. „Šťastnou cestu“ zvládne každý; rozdíl mezi hračkou a použitelným systémem je v tom, co se stane při prázdném formuláři, výpadku e-mailu nebo dvojím kliknutí.", "cil": "Donutit tě vyjmenovat nepříjemné situace předem — chybné vstupy, zavřené dny, rezervaci v minulosti, souběžné akce. Seznam „co se může pokazit“.", "dosah": "Web, který se chová předvídatelně i když něco selže. Místo pádu uvidí zákazník srozumitelnou hlášku.", "chyba": "Dva zákazníci kliknou na slot 10:00 ve stejnou vteřinu → vzniknou dvě rezervace na jeden termín a kadeřnice má v deset dvě dámy. Edge case „souběžná rezervace“ vynutí atomickou kontrolu v databázi — potvrdí se jen první."}, {"id": "sec-1-3", "kap": "Sekce 1.3", "nazev": "1.3 Funkční požadavky", "proc": "Scénáře ukazují příběhy; funkční požadavky je převádějí na číslovaná pravidla. Čísla (FR-001…) umožňují <strong>vystopovatelnost</strong>: ke každému požadavku dohledáš kód i test. Styl EARS („Systém MUSÍ…“) brání dvojznačnosti — z dvojznačnosti vyrobí AI dvojznačný kód.", "cil": "Zformulovat jednoznačná, ověřitelná pravidla, každé s číslem. Značka <strong>[NEEDS CLARIFICATION]</strong> (nutno upřesnit) viditelně označí nejasnost k dořešení — zde u FR-015 (retence údajů dle GDPR).", "dosah": "Kontrolní seznam pro závěrečné ověření „je hotové vše slíbené?“. AI implementuje přesně to, co tam stojí, ne svoji interpretaci.", "chyba": "„Rezervace by měla být spolehlivá“ si AI vyloží po svém. Naproti tomu „FR-010: při souběžné rezervaci potvrď jen prvního a druhému ukaž, že slot není volný“ je konkrétní a nedá se vyložit dvojím způsobem."}, {"id": "sec-1-4", "kap": "Sekce 1.4", "nazev": "1.4 Nefunkční požadavky", "proc": "Funkční požadavky říkají, <strong>co</strong> systém dělá; nefunkční, <strong>jak dobře</strong> — jak rychle, bezpečně, dostupně. Tyhle vlastnosti se těžko dolepují zpětně. Bezpečnost vestavěná od začátku je levná, přidaná do hotového systému drahá a křehká.", "cil": "Zachytit <strong>měřitelné</strong> nároky na kvalitu. Ne „rychlé“, ale „API pro dostupné sloty odpoví do 300 ms“.", "dosah": "Systém použitelný v reálných podmínkách a jasné mantinely pro AI. Bez řádku o bezpečnosti by klidně nechala admin kalendář (s kontakty zákazníků) veřejně bez přihlášení.", "chyba": "Web funguje s deseti rezervacemi, ale výběr termínu se na mobilu načítá osm sekund — a většina lidí rezervuje z telefonu. Cíl „načte se do 2 s na mobilu“ by vývoj nasměroval na efektivní řešení."}, {"id": "sec-1-5", "kap": "Sekce 1.5", "nazev": "1.5 Datové entity", "proc": "Většina aplikací je hlavně o tom, jak spolu souvisí data. Bez pojmenování „věcí“ si je AI domyslí — a nekonzistentně (jednou „kadeřnice“, podruhé „stylista“, potřetí „zaměstnanec“, a nikdo neví, jestli je to totéž).", "cil": "Vyjmenovat hlavní datové objekty, jejich klíčová pole a vztahy. Tady šest entit — Služba, Kadeřnice, Směna, Rezervace, Zákazník, Zavřeno. Popisuješ <strong>co</strong> data jsou, ne <strong>jak</strong> je uložíš.", "dosah": "Konzistentní pojmenování a strukturu napříč projektem. AI i ty mluvíte o stejných věcech stejnými slovy.", "chyba": "V jedné části kódu „rezervace“ patří „zákazníkovi“, v jiné „uživateli“. Vzniknou dvě nekompatibilní struktury a propojení rezervací s kontakty se rozsype."}, {"id": "sec-1-6", "kap": "Sekce 1.6", "nazev": "1.6 Kritéria úspěchu", "proc": "Bez měřitelného cíle nikdy nevíš, kdy je hotovo — a „skoro hotovo“ se táhne donekonečna. Měřitelnost brání sebeklamu: „rezervace je docela rychlá“ je pocit, „zákazník ji dokončí do 90 sekund“ je ověřitelný fakt.", "cil": "Definovat číselně ověřitelné výsledky. Liší se od funkčních požadavků tím, že měří <strong>dopad</strong> („60 % rezervací online“, „no-show klesne o 20 %“), ne jen schopnost.", "dosah": "Jasnou cílovou čáru. Ty i AI víte, kam směřujete, a po dokončení objektivně ověříte, jestli jste tam došli.", "chyba": "Cíl „rezervace má být jednoduchá“ → postavíš osmikrokový formulář, který lidé v půlce opouštějí. Kritérium „SC-002: dokončí do 90 sekund“ by hned ukázalo, že to chce výrazně méně kroků."}, {"id": "sec-1-7", "kap": "Sekce 1.7", "nazev": "1.7 Předpoklady a otevřené otázky", "proc": "Každý projekt stojí na tichých předpokladech („zákazník má e-mail“, „jedna pobočka“). Nevyřčené narazí až v půlce práce, kdy je drahé je měnit. Otevřené otázky jsou poctivé přiznání „tohle ještě nevím“.", "cil": "Vytáhnout skryté předpoklady na světlo (jeden salon, max. 4 kadeřnice, e-mail jako hlavní kanál) a sepsat nezodpovězené otázky na jedno viditelné místo.", "dosah": "Méně nepříjemných překvapení v půlce vývoje. Otevřené otázky se stanou viditelným seznamem k dořešení, ne skrytými minami.", "chyba": "Tiše předpokládáš jen české zákazníky a napíšeš vše napevno česky. Za dva týdny chce majitelka i angličtinu a ty přepisuješ texty po celém kódu. Otázka „Bude web vícejazyčný (CZ/EN)?“ drží rozhodnutí viditelné."}, {"id": "sec-2", "kap": "Část 2", "nazev": "2. Ústava projektu — neměnné principy", "proc": "Specifikace řeší jednu funkci; ústava pravidla platná <strong>napříč vším</strong> — styl, testování, bezpečnost. AI nemá paměť mezi sezeními, takže bez „pevného bodu“ by ti v každém sezení míchala styly a porušovala zásady.", "cil": "Zachytit pár nepřekročitelných principů na jednom místě — např. „žádný produkční kód bez padajícího testu (TDD)“, „pokrytí kritické logiky 90 %“, „nejjednodušší řešení“. Důraz na slově <strong>pár</strong> — má být krátká.", "dosah": "Konzistenci napříč projektem a všemi sezeními s AI. Každá nová funkce ctí stejné standardy.", "chyba": "V pondělí AI napíše rezervace s testy, v úterý je u zrušení vynechá, ve středu použije jinou konvenci pojmenování. Po týdnu vypadá projekt, jako by ho psali tři různí lidé."}, {"id": "sec-3", "kap": "Část 3", "nazev": "3. Plán implementace — JAK to postavíme", "proc": "Tady se konečně řeší technologie — záměrně oddělená od specifikace. Když máš <strong>CO</strong> (spec) a <strong>JAK</strong> (plán) zvlášť, můžeš stejné zadání postavit dvěma způsoby a porovnat je, aniž bys přepisoval specifikaci.", "cil": "Rozhodnout a zapsat prostředky: jazyk, knihovny, úložiště, strukturu. Tady Next.js + TypeScript + Prisma + PostgreSQL — jen <strong>jedna</strong> z možných realizací. „Brána kontroly ústavy“ ověří, že plán neporušuje principy z části 2.", "dosah": "Promyšlený technický směr dřív, než se píše kód. AI i ty máte mapu a neimprovizujete za pochodu.", "chyba": "Necháš technické detaily prosáknout do specifikace. Netechnická majitelka přestane rozumět a zavážeš se k jednomu řešení dřív, než zvážíš alternativy. Tyhle detaily patří do plánu."}, {"id": "sec-4", "kap": "Část 4", "nazev": "4. Úkoly — rozpad na malé kroky", "proc": "Velké zadání („postav celý systém“) je pro AI past — vygeneruje hromadu kódu najednou, ty ji nestihneš zkontrolovat a stačí jedna skrytá chyba. Malé úkoly = malé změny, které <strong>jdou</strong> přečíst a ověřit.", "cil": "Rozsekat práci na nejmenší smysluplné kroky, seřadit do fází a vyznačit závislosti a co lze paralelně ([P]). Pořadí ctí TDD: nejdřív padající test (T007), pak kód (T008).", "dosah": "Práci po zvládnutelných soustech s funkčním, ověřeným mezistavem po každém kroku. Když se něco pokazí, víš přesně u kterého úkolu.", "chyba": "Zadáš „naimplementuj celý systém“ jedním příkazem. Mezi stovkami řádků je tichá chyba (nezohlední délku služby, nabídne barvení 15 minut před zavírací dobou) a najdeš ji, až si zákazník stěžuje."}, {"id": "sec-5", "kap": "Část 5", "nazev": "5. BDD scénáře — chování viditelné uživateli", "proc": "Gherkin (formát <strong>Pokud–Když–Pak</strong>) má dvojí kouzlo: čte se skoro jako věta (rozumí i majitelka) a zároveň jde spustit jako test. Vzniká „živá dokumentace“, která se nemůže rozejít s realitou — když se chování změní, scénář spadne.", "cil": "Zapsat konkrétní příklady chování tak, aby sloužily zároveň jako srozumitelná dokumentace i spustitelné testy. Pravidlo „jeden scénář = jedno chování“ je drží čisté.", "dosah": "Dokumentaci a testy v jednom, které nezastarají bez varování. Když někdo (i AI) rozbije rezervaci, test selže dřív, než se chyba dostane k zákazníkům.", "chyba": "Vágní „Pak rezervace funguje“ se nedá ověřit ani z toho nepoznáš, co se má stát. „Pak je rezervace vytvořena a slot 10:00 je obsazený a obdržím potvrzovací e-mail“ lze spustit jako test i přečíst jako popis."}, {"id": "sec-6", "kap": "Část 6", "nazev": "6. AGENTS.md — pravidla pro AI agenta", "proc": "AI začíná každé sezení jako čistý list — nepamatuje si včerejšek ani jak je web postavený. <strong>AGENTS.md</strong> (nebo CLAUDE.md) je první, co si přečte, a říká, jak se v projektu chovat. Klíčové je držet ho <strong>krátký</strong> — přeplněný ho AI začne ignorovat.", "cil": "Předat agentovi provozní kontext a mantinely na jednom místě: příkazy (npm test), postup (nejdřív plán, pak kód; TDD) a tři kategorie hranic — co dělat vždy, na co se ptát, co nikdy. Styl kódu sem nepatří, ten vynutí linter.", "dosah": "AI, která pracuje podle tvých pravidel i bez opakování v každém promptu. Mantinel „nikdy necommituj .env“ zabrání nahrání přístupu k databázi do veřejného repozitáře.", "chyba": "Bez pravidel AI „opraví“ padající test na kolizi tím, že ho přepíše, aby procházel — místo aby spravila kód. Test je zelený, ale dvojité rezervace se pořád tvoří. Pravidlo „NEMĚŇ testy, aby prošly. Oprav kód.“ to blokuje."}, {"id": "sec-7", "kap": "Část 7", "nazev": "7. Definice hotového (Definition of Done)", "proc": "„Hotovo“ znamená pro každého něco jiného — pro jednoho „kód napsán“, pro druhého „otestováno, zdokumentováno, nasazeno“. Bez společné definice odškrtneš úkol jako splněný, ale chybí testy a vrací se to jako bumerang.", "cil": "Stanovit jednotnou laťku „kdy je práce skutečně dokončená“ — všechny scénáře procházejí jako testy, edge cases ošetřené, žádné nevyřešené [NEEDS CLARIFICATION], spec aktualizovaná a (u AI) kód, kterému <strong>ty</strong> rozumíš.", "dosah": "Konzistentní kvalitu napříč vším, co dodáš. Nic se neprohlásí za hotové, dokud opravdu hotové není, takže se nehromadí skrytý dluh.", "chyba": "Odškrtneš formulář jako „hotovo“, protože běží u tebe. Nemá testy, takže o měsíc později při úpravě připomínek rozbiješ kontrolu kolizí a nikdo si nevšimne, dokud nepřijdou dvě dámy na jeden termín."}, {"id": "sec-8", "kap": "Část 8", "nazev": "8. Údržba a relevance", "proc": "Nejčastější způsob, jak hezká specifikace umře: kód se vyvíjí, dokument ne, a po pár týdnech popisuje neplatné věci. Tomu se říká <strong>spec drift</strong> (rozpad specifikace). Pak mu lidé i AI přestanou věřit a je z něj mrtvý text.", "cil": "Udržet dokument a kód v souladu jednoduchými pravidly: jediný zdroj pravdy, verzování v Gitu, krátké smyčky (po každé změně aktualizuj spec) a automatické testy v CI, které samy odhalí rozpor.", "dosah": "Živý dokument, kterému lze věřit i za rok, protože se mění <strong>spolu</strong> s kódem. Testy fungují jako hlídač — když kód uteče od specifikace, build spadne.", "chyba": "Půl roku po startu se nový kolega (nebo AI) ptá, jak funguje zrušení. Dokument tvrdí „24 h předem“, ale kód někdo změnil na 48 h a nezapsal to. Strávíš odpoledne dohadováním, co vlastně platí."}];
+  var anchors = SECTIONS.map(function(s){return document.getElementById(s.id);});
+  var info = document.getElementById('infoSticky');
+  var rp = document.getElementById('rp');
+  var stepLabel = document.getElementById('stepLabel');
+  var mapBtn = document.getElementById('mapBtn');
+  var fsBtn = document.getElementById('fsBtn');
+  var overlay = document.getElementById('mapOverlay');
+  var mapList = document.getElementById('mapList');
+  var activeIdx = -1;
+
+  function block(cls,ico,label,text){
+    return '<div class="block '+cls+'"><div class="lbl"><span class="ico">'+ico+'</span>'+label+'</div><p>'+text+'</p></div>';
+  }
+  function buildInfo(s){
+    return '<div class="info-card">'+
+      '<span class="kap-tag">'+s.kap+'</span>'+
+      '<h2 class="sec-name">'+s.nazev+'</h2>'+
+      block('proc','🎯','Proč je důležitá',s.proc)+
+      block('cil','📌','Cíl sekce',s.cil)+
+      block('dosah','✅','Čeho dosáhneme',s.dosah)+
+      block('chyba','⚠️','Příklad chyby',s.chyba)+
+    '</div>';
+  }
+  function setActive(i){
+    if(i===activeIdx) return;
+    activeIdx=i;
+    var s=SECTIONS[i];
+    info.innerHTML=buildInfo(s);
+    stepLabel.innerHTML='Sekce <b>'+(i+1)+'</b> z '+SECTIONS.length;
+    anchors.forEach(function(a,j){ if(a) a.classList.toggle('active-head', j===i); });
+    updateMapActive();
+  }
+  function computeActive(){
+    var doc=document.documentElement;
+    var y=window.scrollY||doc.scrollTop;
+    // u konce dokumentu přichyť poslední sekci (poslední sekce už nedosáhnou na spouštěcí čáru)
+    if(y + window.innerHeight >= doc.scrollHeight - 6){ setActive(anchors.length-1); return; }
+    var trigger=window.innerHeight*0.32, idx=0;
+    for(var k=0;k<anchors.length;k++){
+      var a=anchors[k]; if(!a) continue;
+      if(a.getBoundingClientRect().top - trigger <= 0){ idx=k; } else { break; }
+    }
+    setActive(idx);
+  }
+  function onScroll(){
+    var doc=document.documentElement;
+    var max=doc.scrollHeight - window.innerHeight;
+    var y=window.scrollY||doc.scrollTop;
+    rp.style.width=(max>0?(y/max*100):0)+'%';
+    computeActive();
+  }
+  var ticking=false;
+  window.addEventListener('scroll',function(){ if(!ticking){requestAnimationFrame(function(){onScroll();ticking=false;});ticking=true;} },{passive:true});
+  window.addEventListener('resize',onScroll);
+
+  // mini-mapa
+  function buildMap(){
+    var html='';
+    SECTIONS.forEach(function(s,i){ html+='<li data-i="'+i+'"><span class="num">'+(i+1)+'</span>'+s.nazev+'</li>'; });
+    mapList.innerHTML=html;
+    Array.prototype.forEach.call(mapList.querySelectorAll('li'),function(li){
+      li.addEventListener('click',function(){
+        var i=parseInt(li.getAttribute('data-i'),10);
+        if(anchors[i]) anchors[i].scrollIntoView({behavior:'smooth',block:'start'});
+        closeMap();
+      });
+    });
+  }
+  function updateMapActive(){
+    Array.prototype.forEach.call(mapList.querySelectorAll('li'),function(li){
+      li.classList.toggle('active',parseInt(li.getAttribute('data-i'),10)===activeIdx);
+    });
+  }
+  function openMap(){overlay.classList.add('show');}
+  function closeMap(){overlay.classList.remove('show');}
+  function toggleMap(){overlay.classList.contains('show')?closeMap():openMap();}
+  function toggleFs(){ if(!document.fullscreenElement){(document.documentElement.requestFullscreen||function(){}).call(document.documentElement);}else{(document.exitFullscreen||function(){}).call(document);} }
+
+  function jump(delta){
+    // jsme-li nad první sekcí (na úvodní obrazovce), další krok míří na sekci 0, ne na 1
+    var first=anchors[0];
+    var aboveFirst = first && (first.getBoundingClientRect().top > window.innerHeight*0.32);
+    if(aboveFirst && delta<0){ window.scrollTo({top:0,behavior:'smooth'}); return; }
+    var base = aboveFirst ? -1 : (activeIdx<0?0:activeIdx);
+    var t=Math.max(0,Math.min(anchors.length-1,base+delta));
+    if(anchors[t]) anchors[t].scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){closeMap();return;}
+    if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();jump(1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();jump(-1);}
+    else if(e.key==='Home'){e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});}
+    else if(e.key==='End'){e.preventDefault();var o=document.getElementById('outroHero');if(o)o.scrollIntoView({behavior:'smooth'});}
+    else if(e.key==='m'||e.key==='M'){toggleMap();}
+    else if(e.key==='f'||e.key==='F'){toggleFs();}
+  });
+  mapBtn.addEventListener('click',toggleMap);
+  fsBtn.addEventListener('click',toggleFs);
+  overlay.addEventListener('click',function(e){ if(e.target===overlay) closeMap(); });
+
+  buildMap();
+  setActive(0);
+  onScroll();
+})();
+
+</script>
+</body>
+</html>
