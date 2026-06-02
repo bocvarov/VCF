@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Od vibecodera k AI inženýrovi — vibe-coding fest 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#ffffff;
+  --ink:#222222;
+  --body:#3f3f3f;
+  --muted:#6a6a6a;
+  --muted-soft:#929292;
+  --rausch:#ff385c;
+  --rausch-active:#e00b41;
+  --rausch-pale:#ffd1da;
+  --surface-soft:#f7f7f7;
+  --surface-strong:#f2f2f2;
+  --hairline:#dddddd;
+  --hairline-soft:#ebebeb;
+  --shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
+  --pos:50;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',-apple-system,system-ui,'Helvetica Neue',sans-serif;
+  background:var(--canvas);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+.deck{position:relative;width:100vw;height:100vh}
+
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(32px,6vh,80px) clamp(28px,7vw,120px);
+  opacity:0;visibility:hidden;
+  transform:translateY(12px);
+  transition:opacity .5s ease, transform .5s ease, visibility .5s;
+}
+.slide.active{opacity:1;visibility:visible;transform:none}
+.wrap{width:100%;max-width:1120px;margin:0 auto}
+
+.eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:clamp(12px,1.1vw,14px);font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--rausch);margin-bottom:clamp(20px,3vh,32px);
+}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--rausch);display:inline-block}
+.eyebrow.muted{color:var(--muted)}
+.eyebrow.muted .dot{background:var(--muted-soft)}
+
+h1{font-size:clamp(40px,6.4vw,82px);font-weight:700;line-height:1.04;letter-spacing:-.02em}
+h2{font-size:clamp(30px,4.6vw,58px);font-weight:700;line-height:1.08;letter-spacing:-.015em}
+.lead{
+  font-size:clamp(18px,2vw,27px);font-weight:400;color:var(--body);
+  line-height:1.5;margin-top:clamp(18px,2.6vh,28px);max-width:24ch;
+}
+.lead.wide{max-width:40ch}
+.lead strong{font-weight:600;color:var(--ink)}
+.accent{color:var(--rausch)}
+
+/* ---- cover presenter strip ---- */
+.presenter{
+  display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2vw,28px);
+  margin-top:clamp(36px,6vh,64px);padding-top:clamp(22px,3vh,28px);
+  border-top:1px solid var(--hairline);font-size:clamp(14px,1.3vw,17px);color:var(--muted);
+}
+.presenter .name{color:var(--ink);font-weight:600}
+.presenter .sep{width:1px;height:18px;background:var(--hairline)}
+.presenter a{color:var(--muted);text-decoration:none}
+.presenter a:hover{color:var(--ink)}
+
+/* ---- the slider (centerpiece) ---- */
+.poles{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:end;
+  gap:clamp(16px,3vw,40px);margin-bottom:clamp(8px,1.4vh,14px);
+}
+.pole{font-size:clamp(20px,2.4vw,32px);font-weight:700;letter-spacing:-.01em;transition:color .2s,opacity .2s}
+.pole.l{text-align:left}
+.pole.r{text-align:right}
+.pole.dim{color:var(--muted-soft);font-weight:500}
+.readout{display:flex;flex-direction:column;align-items:center;min-width:140px}
+.readout .num{
+  font-size:clamp(44px,6vw,72px);font-weight:700;line-height:1;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;
+}
+.readout .num .pct{font-size:.45em;font-weight:600;color:var(--muted);margin-left:2px}
+.readout .zone{font-size:clamp(12px,1.2vw,15px);font-weight:600;color:var(--rausch);margin-top:8px;text-align:center;min-height:1.2em;transition:color .2s}
+
+.master{margin:clamp(10px,2vh,20px) 0 clamp(20px,3vh,30px)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;cursor:pointer}
+input[type=range]:focus{outline:none}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+  background:linear-gradient(to right,var(--rausch) 0%,var(--rausch) calc(var(--pos)*1%),var(--hairline) calc(var(--pos)*1%),var(--hairline) 100%);}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--hairline)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--rausch)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;
+  background:var(--rausch);border:4px solid #fff;box-shadow:var(--shadow);margin-top:-13px;transition:background .15s}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--rausch);border:4px solid #fff;box-shadow:var(--shadow)}
+input[type=range]:active::-webkit-slider-thumb{background:var(--rausch-active)}
+
+.axes{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,1.6vh,18px) clamp(28px,4vw,64px)}
+.axis{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 14px}
+.axis .name{grid-column:1/-1;font-size:clamp(11px,1vw,13px);font-weight:600;color:var(--muted);letter-spacing:.02em}
+.axis .row{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}
+.axis .lab{font-size:clamp(12px,1.15vw,15px);color:var(--muted);transition:color .2s,font-weight .2s;white-space:nowrap}
+.axis .lab.on{color:var(--ink);font-weight:600}
+.axis .track{position:relative;height:14px}
+.axis .base{position:absolute;left:0;right:0;top:50%;height:2px;border-radius:2px;background:var(--hairline);transform:translateY(-50%)}
+.axis .fill{position:absolute;left:0;top:50%;height:2px;border-radius:2px;background:var(--rausch);transform:translateY(-50%);width:calc(var(--pos)*1%);transition:width .12s linear}
+.axis .knob{position:absolute;top:50%;left:calc(var(--pos)*1%);width:11px;height:11px;border-radius:50%;background:var(--rausch);border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transform:translate(-50%,-50%);transition:left .12s linear}
+.hint{text-align:center;font-size:clamp(12px,1.15vw,15px);color:var(--muted-soft);margin-top:clamp(16px,2.4vh,24px)}
+.hint kbd{font-family:inherit;font-weight:600;color:var(--muted);background:var(--surface-strong);border:1px solid var(--hairline);border-radius:6px;padding:1px 7px;font-size:.92em}
+
+/* ---- detail slides ---- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,2.4vw,28px);margin-top:clamp(26px,4vh,40px)}
+.card{
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:14px;
+  padding:clamp(22px,2.6vw,32px);display:flex;flex-direction:column;gap:14px;
+}
+.card.soft{background:var(--surface-soft);border-color:transparent}
+.card.feature{box-shadow:var(--shadow);border-color:transparent}
+.card .tag{
+  align-self:flex-start;font-size:clamp(11px,1vw,13px);font-weight:600;letter-spacing:.04em;
+  padding:5px 13px;border-radius:9999px;
+}
+.tag.neutral{background:var(--surface-strong);color:var(--muted)}
+.tag.hot{background:var(--rausch);color:#fff}
+.card .quote{font-size:clamp(17px,1.7vw,22px);font-weight:600;color:var(--ink);line-height:1.35}
+.card ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.card li{display:flex;gap:11px;font-size:clamp(14px,1.3vw,17px);color:var(--body);line-height:1.45}
+.card li .mk{color:var(--rausch);font-weight:700;flex:none;line-height:1.45}
+.card .res{font-size:clamp(13px,1.2vw,16px);color:var(--muted);margin-top:auto;padding-top:8px;border-top:1px solid var(--hairline-soft)}
+.card .res b{color:var(--ink);font-weight:600}
+.punch{
+  margin-top:clamp(24px,3.4vh,38px);font-size:clamp(18px,2.1vw,28px);font-weight:600;
+  color:var(--ink);line-height:1.4;max-width:32ch;
+}
+.punch .accent{color:var(--rausch)}
+
+/* ---- takeaway steps ---- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.2vw,28px);margin-top:clamp(28px,4vh,44px)}
+.step{display:flex;flex-direction:column;gap:10px}
+.step .n{font-size:clamp(36px,4.4vw,58px);font-weight:700;color:var(--rausch);line-height:1;letter-spacing:-.02em}
+.step .t{font-size:clamp(16px,1.5vw,20px);font-weight:600;color:var(--ink)}
+.step .d{font-size:clamp(13px,1.25vw,16px);color:var(--body);line-height:1.45}
+
+.contact-card{
+  margin-top:clamp(30px,4.4vh,48px);background:var(--surface-soft);border-radius:16px;
+  padding:clamp(22px,2.8vw,34px);display:flex;flex-wrap:wrap;align-items:center;
+  justify-content:space-between;gap:18px;
+}
+.contact-card .who .nm{font-size:clamp(20px,2vw,26px);font-weight:700}
+.contact-card .who .ro{font-size:clamp(13px,1.2vw,16px);color:var(--muted);margin-top:4px}
+.contact-card .links{display:flex;flex-direction:column;gap:6px;font-size:clamp(14px,1.3vw,17px);text-align:right}
+.contact-card .links a{color:var(--ink);text-decoration:none;font-weight:500}
+.contact-card .links a:hover{color:var(--rausch)}
+.contact-card .links span{color:var(--muted)}
+
+/* ---- chrome: nav + footer ---- */
+.footer{
+  position:fixed;left:0;right:0;bottom:0;height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(20px,4vw,48px);font-size:13px;color:var(--muted-soft);
+  pointer-events:none;
+}
+.footer .brand{font-weight:600;color:var(--muted)}
+.footer .brand .accent{color:var(--rausch)}
+.nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:18px;pointer-events:auto}
+.dots{display:flex;gap:9px}
+.dots button{width:8px;height:8px;border-radius:50%;border:none;background:var(--hairline);padding:0;cursor:pointer;transition:background .2s,transform .2s}
+.dots button.on{background:var(--rausch);transform:scale(1.25)}
+.arrows{display:flex;gap:8px}
+.arrows button{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--hairline);background:#fff;
+  color:var(--ink);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,border-color .15s;
+}
+.arrows button:hover{background:var(--surface-soft)}
+.arrows button:disabled{color:var(--muted-soft);cursor:default;background:#fff}
+.counter{position:fixed;right:clamp(20px,4vw,48px);bottom:20px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
+
+@media (max-width:820px){
+  .axes,.cards,.steps{grid-template-columns:1fr}
+  .lead,.lead.wide,.punch{max-width:none}
+  .contact-card .links{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  .slide,.axis .fill,.axis .knob{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 1 — Cover -->
+  <section class="slide" data-i="0">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span>vibe-coding fest · Ostrava · 2. 6. 2026</span>
+      <h1>Od vibecodera<br>k <span class="accent">AI inženýrovi</span></h1>
+      <p class="lead wide">Není to buď a nebo. Je to <strong>jeden posuvník</strong> — a posouvá se po něm osm věcí najednou.</p>
+      <div class="presenter">
+        <span class="name">Michal Bočvarov</span>
+        <span class="sep"></span>
+        <a href="mailto:bocvarov@gmail.com">bocvarov@gmail.com</a>
+        <span class="sep"></span>
+        <span>774 411 716</span>
+        <span class="sep"></span>
+        <a href="https://github.com/bocvarov/VCF/tree/main">github.com/bocvarov/VCF</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 — Hook -->
+  <section class="slide" data-i="1">
+    <div class="wrap">
+      <span class="eyebrow muted"><span class="dot"></span>O co jde</span>
+      <h2>Vlevo dělám aplikaci pro&nbsp;sebe.<br>Vpravo <span class="accent">produkt pro tisíce lidí.</span></h2>
+      <p class="lead wide">Mezi těmito dvěma konci leží plynulá škála. Čím dál vpravo se posunu, tím <strong>spolehlivější</strong> a <strong>opakovatelnější</strong> výsledek dostanu — ale taky tím víc péče to stojí.</p>
+    </div>
+  </section>
+
+  <!-- 3 — Main visual: the slider -->
+  <section class="slide" data-i="2">
+    <div class="wrap" style="max-width:1000px">
+      <div class="poles">
+        <div class="pole l" id="poleL">vibecoder</div>
+        <div class="readout">
+          <div class="num"><span id="num">50</span><span class="pct">%</span></div>
+        </div>
+        <div class="pole r" id="poleR">AI inženýr</div>
+      </div>
+      <div class="master">
+        <input type="range" id="slider" min="0" max="100" value="50" step="1" aria-label="posuvník od vibecodera k AI inženýrovi">
+      </div>
+      <div class="zone" id="zone" style="text-align:center;font-size:clamp(13px,1.3vw,16px);font-weight:600;color:var(--rausch);margin:-12px 0 22px">stavím pro sebe</div>
+
+      <div class="axes" id="axes"></div>
+      <p class="hint">Táhni posuvníkem nebo použij šipky <kbd>←</kbd> <kbd>→</kbd> na něm — všech osm řádků se posouvá společně.</p>
+    </div>
+  </section>
+
+  <!-- 4 — Detail: zadání -->
+  <section class="slide" data-i="3">
+    <div class="wrap">
+      <span class="eyebrow muted"><span class="dot"></span>Co rozhoduje nejvíc — zadání</span>
+      <h2>Čím líp popíšeš, co chceš,<br>tím <span class="accent">míň tě AI překvapí.</span></h2>
+      <div class="cards">
+        <div class="card soft">
+          <span class="tag neutral">Mlhavé zadání</span>
+          <p class="quote">„Udělej mi aplikaci na úkoly.“</p>
+          <p class="res">Výsledek: <b>pokaždé jiný.</b> AI si domyslí to, co jsi neřekl.</p>
+        </div>
+        <div class="card feature">
+          <span class="tag hot">Přesné zadání</span>
+          <ul>
+            <li><span class="mk">→</span><span><b>Co chci:</b> seznam úkolů, odškrtávání, ukládání do prohlížeče.</span></li>
+            <li><span class="mk">→</span><span><b>Co nechci:</b> žádné přihlašování ani databázi.</span></li>
+            <li><span class="mk">→</span><span><b>Příklad:</b> ukázka, jak to má vypadat a fungovat.</span></li>
+          </ul>
+          <p class="res">Výsledek: <b>blízko tomu, co čekáš</b> — a dá se zopakovat.</p>
+        </div>
+      </div>
+      <p class="punch">Pár vět stačí na hraní. Na vážnou věc potřebuješ <span class="accent">popsat hranice</span> — co ano, co ne, a jak to poznat.</p>
+    </div>
+  </section>
+
+  <!-- 5 — Detail: ověřování + spolehlivost -->
+  <section class="slide" data-i="4">
+    <div class="wrap">
+      <span class="eyebrow muted"><span class="dot"></span>Důvěřuj, ale ověřuj</span>
+      <h2>AI ti dá výsledek.<br>Ty si <span class="accent">ověř, že sedí.</span></h2>
+      <div class="cards">
+        <div class="card soft">
+          <span class="tag neutral">Spolehlivost</span>
+          <p class="quote">Stejné zadání nedá vždy stejný výstup.</p>
+          <p class="res">U AI je to <b>vlastnost, ne chyba.</b> Bráníš se proti tomu přesným zadáním a kontrolou výsledku.</p>
+        </div>
+        <div class="card soft">
+          <span class="tag neutral">Ověřování</span>
+          <p class="quote">Místo ručního proklikávání si necháš výsledek zkontrolovat.</p>
+          <p class="res">Připravíš si <b>sadu kontrol,</b> které samy řeknou, jestli to funguje jako dřív.</p>
+        </div>
+      </div>
+      <p class="punch">Pro sebe stačí <span class="accent">mrknout okem.</span> Pro tisíce lidí už musíš ověřovat <span class="accent">automaticky.</span></p>
+    </div>
+  </section>
+
+  <!-- 6 — Takeaway -->
+  <section class="slide" data-i="5">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span>Co si odnést</span>
+      <h2>Nemusíš být inženýr.<br>Stačí <span class="accent">o krok doprava.</span></h2>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><div class="t">Piš přesnější zadání</div><div class="d">Řekni, co chceš, co nechceš a ukaž příklad.</div></div>
+        <div class="step"><div class="n">2</div><div class="t">Ověřuj výstup</div><div class="d">Nevěř na první dobrou. Zkontroluj, že to dělá, co má.</div></div>
+        <div class="step"><div class="n">3</div><div class="t">Mysli na dopad</div><div class="d">Pro sebe? Stačí málo. Pro tisíce? Přidej péči.</div></div>
+      </div>
+      <div class="contact-card">
+        <div class="who">
+          <div class="nm">Michal Bočvarov</div>
+          <div class="ro">vibe-coding fest 2026 · Ostrava</div>
+        </div>
+        <div class="links">
+          <a href="mailto:bocvarov@gmail.com">bocvarov@gmail.com</a>
+          <span>774 411 716</span>
+          <a href="https://github.com/bocvarov/VCF/tree/main">github.com/bocvarov/VCF</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  <span class="brand"><span class="accent">●</span> vibe-coding fest 2026</span>
+</div>
+<div class="counter"><span id="cur">1</span> / <span id="tot">6</span></div>
+<nav class="nav">
+  <div class="arrows"><button id="prev" aria-label="předchozí slide">‹</button></div>
+  <div class="dots" id="dots"></div>
+  <div class="arrows"><button id="next" aria-label="další slide">›</button></div>
+</nav>
+
+<script>
+const AXES = [
+  {name:'Zadání',          l:'pár vět',           r:'detailní zadání'},
+  {name:'Ověřování',       l:'spustím a uvidím',  r:'ověřuji automaticky'},
+  {name:'Výsledky',        l:'pokaždé jiné',      r:'spolehlivé a opakovatelné'},
+  {name:'Chování systému', l:'nechám běžet',      r:'přesně definuji'},
+  {name:'Znalost kódu',    l:'kód neznám',        r:'kód čtu i píšu'},
+  {name:'Rizika',          l:'neřeším',           r:'znám a řídím'},
+  {name:'Odbornost',       l:'malá',              r:'velká'},
+  {name:'Dopad',           l:'aplikace pro sebe', r:'produkt pro tisíce'},
+];
+
+const axesEl = document.getElementById('axes');
+axesEl.innerHTML = AXES.map(a => `
+  <div class="axis">
+    <div class="name">${a.name}</div>
+    <div class="row">
+      <span class="lab l">${a.l}</span>
+      <span class="track"><span class="base"></span><span class="fill"></span><span class="knob"></span></span>
+      <span class="lab r">${a.r}</span>
+    </div>
+  </div>`).join('');
+
+const slider = document.getElementById('slider');
+const numEl  = document.getElementById('num');
+const zoneEl = document.getElementById('zone');
+const poleL  = document.getElementById('poleL');
+const poleR  = document.getElementById('poleR');
+const deck   = document.getElementById('deck');
+const labL   = [...document.querySelectorAll('.axis .lab.l')];
+const labR   = [...document.querySelectorAll('.axis .lab.r')];
+
+function updateSlider(){
+  const v = Math.round(+slider.value);
+  document.documentElement.style.setProperty('--pos', v);
+  numEl.textContent = v;
+  poleL.classList.toggle('dim', v > 50);
+  poleR.classList.toggle('dim', v < 50);
+  labL.forEach(e => e.classList.toggle('on', v < 50));
+  labR.forEach(e => e.classList.toggle('on', v > 50));
+  zoneEl.textContent = v <= 33 ? 'stavím pro sebe'
+                     : v <= 66 ? 'pouštím to mezi lidi'
+                     : 'buduji produkt pro tisíce';
+}
+slider.addEventListener('input', updateSlider);
+slider.addEventListener('keydown', e => e.stopPropagation());
+updateSlider();
+
+/* ---- slide navigation ---- */
+const slides = [...document.querySelectorAll('.slide')];
+const total  = slides.length;
+let idx = 0;
+const dotsEl = document.getElementById('dots');
+const curEl  = document.getElementById('cur');
+const prevBtn= document.getElementById('prev');
+const nextBtn= document.getElementById('next');
+document.getElementById('tot').textContent = total;
+
+slides.forEach((_, i) => {
+  const b = document.createElement('button');
+  b.setAttribute('aria-label', 'slide ' + (i+1));
+  b.addEventListener('click', () => go(i));
+  dotsEl.appendChild(b);
+});
+const dotBtns = [...dotsEl.children];
+
+function go(n){
+  idx = Math.max(0, Math.min(total - 1, n));
+  slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+  dotBtns.forEach((d, i) => d.classList.toggle('on', i === idx));
+  curEl.textContent = idx + 1;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === total - 1;
+  if (idx === 2) setTimeout(() => slider.focus(), 520);
+}
+prevBtn.addEventListener('click', () => go(idx - 1));
+nextBtn.addEventListener('click', () => go(idx + 1));
+
+document.addEventListener('keydown', e => {
+  if (e.target === slider) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(idx + 1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(idx - 1); }
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(total - 1);
+});
+
+go(0);
+</script>
+</body>
+</html>
