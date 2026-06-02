@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Od vibe k ověření — Vibecoding × AI engineering · VCF 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#ffffff;
+  --surface-soft:#f7f7f7;
+  --surface-strong:#f2f2f2;
+  --ink:#222222;
+  --body:#3f3f3f;
+  --muted:#6a6a6a;
+  --muted-soft:#929292;
+  --hairline:#dddddd;
+  --hairline-soft:#ebebeb;
+  --rausch:#ff385c;
+  --rausch-active:#e00b41;
+  --rausch-soft:#ffd1da;
+  --font:'Inter',-apple-system,system-ui,'Helvetica Neue',sans-serif;
+  --r-sm:8px; --r-md:14px; --r-xl:32px;
+  --shadow:rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.10) 0 4px 8px 0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  background:var(--canvas);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ---------- Deck / scroll-snap ---------- */
+.deck{
+  height:100vh;
+  overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  scroll-behavior:smooth;
+}
+.slide{
+  height:100vh;
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:6vh clamp(28px,7vw,120px);
+  position:relative;
+}
+.inner{width:100%;max-width:1080px;margin:0 auto}
+
+/* ---------- Common type ---------- */
+.eyebrow{
+  font-size:.72rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--rausch);display:flex;align-items:center;gap:14px;margin-bottom:28px;
+}
+.eyebrow::before{content:"";width:30px;height:2px;background:var(--rausch);border-radius:2px}
+h1{font-size:clamp(2.6rem,6.2vw,4.6rem);font-weight:800;line-height:1.02;letter-spacing:-.03em;color:var(--ink)}
+h2{font-size:clamp(2rem,4.6vw,3.3rem);font-weight:700;line-height:1.06;letter-spacing:-.025em;color:var(--ink)}
+.lead{font-size:clamp(1.05rem,1.7vw,1.4rem);font-weight:400;line-height:1.55;color:var(--body);max-width:62ch}
+.accent{color:var(--rausch)}
+.tr{color:var(--muted);font-weight:400}
+.strike{position:relative;color:var(--muted-soft)}
+.strike::after{content:"";position:absolute;left:-2%;right:-2%;top:52%;height:3px;background:var(--rausch);border-radius:3px;transform:rotate(-3deg)}
+
+/* ---------- Slide 1 ---------- */
+.stat{font-size:clamp(5rem,16vw,12rem);font-weight:800;line-height:.9;letter-spacing:-.04em;color:var(--rausch)}
+.title-1{margin:18px 0 22px}
+.byline{
+  margin-top:46px;padding-top:24px;border-top:1px solid var(--hairline);
+  display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;
+  font-size:.95rem;color:var(--muted);
+}
+.byline strong{color:var(--ink);font-weight:600}
+.byline .dot{width:4px;height:4px;border-radius:50%;background:var(--hairline);display:inline-block}
+
+/* ---------- Cards / comparison ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:36px}
+.card{
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);
+  padding:30px 30px;box-shadow:var(--shadow);
+}
+.card .k{font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--rausch);margin-bottom:12px}
+.card h3{font-size:1.35rem;font-weight:700;letter-spacing:-.01em;margin-bottom:10px}
+.card p{font-size:1.02rem;line-height:1.5;color:var(--body)}
+.vs{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:54px;height:54px;border-radius:50%;background:var(--ink);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;
+  box-shadow:var(--shadow);z-index:2;
+}
+.two.rel{position:relative}
+
+/* ---------- Slider visual ---------- */
+.slider-wrap{margin:46px 0 30px}
+.slider-ends{display:flex;justify-content:space-between;margin-bottom:14px}
+.slider-ends .end{font-weight:700;font-size:1.05rem}
+.slider-ends .end small{display:block;font-weight:500;color:var(--muted);font-size:.82rem;margin-top:2px}
+.track{
+  height:10px;border-radius:999px;
+  background:linear-gradient(90deg,#ffd1da 0%,#ff8aa0 45%,var(--rausch) 100%);
+  position:relative;
+}
+.ticks{display:flex;justify-content:space-between;margin-top:18px;gap:10px}
+.zone{flex:1;text-align:center}
+.zone .lvl{font-size:.68rem;font-weight:700;letter-spacing:.12em;color:var(--muted-soft);text-transform:uppercase}
+.zone .nm{font-size:clamp(.95rem,1.5vw,1.15rem);font-weight:700;margin-top:4px}
+.zone .ds{font-size:.82rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.zone .pin{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--rausch);margin:0 auto 12px}
+.zone:first-child .pin{border-color:var(--rausch-soft)}
+
+/* ---------- Definition box ---------- */
+.defbox{
+  margin-top:14px;background:var(--surface-soft);border-radius:var(--r-md);
+  padding:24px 28px;font-size:1.1rem;line-height:1.55;color:var(--ink);max-width:72ch;
+}
+
+/* ---------- Zone detail lists ---------- */
+.zlist{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:34px}
+.zcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);padding:28px;box-shadow:var(--shadow)}
+.zcard .badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--ink);padding:5px 12px;border-radius:999px;margin-bottom:14px}
+.zcard h3{font-size:1.3rem;font-weight:700;margin-bottom:8px}
+.zcard p{color:var(--body);line-height:1.5;font-size:1rem}
+.note{margin-top:26px;font-size:1.05rem;color:var(--muted)}
+.note b{color:var(--ink)}
+
+/* ---------- Questions ---------- */
+.qlist{margin-top:32px;display:grid;gap:14px;max-width:62ch}
+.q{display:flex;align-items:center;gap:18px;background:var(--surface-soft);border-radius:var(--r-md);padding:16px 22px}
+.q .num{flex:none;width:38px;height:38px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.q span.t{font-size:1.1rem;font-weight:500}
+.q.red{background:#fff0f3}.q.red .num{background:var(--rausch)}
+
+/* ---------- Takeaway ---------- */
+.big-take{font-size:clamp(1.6rem,3.4vw,2.6rem);font-weight:700;line-height:1.18;letter-spacing:-.02em;margin:14px 0 24px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:20px 0 8px}
+.flow .pill{background:var(--surface-strong);border-radius:999px;padding:10px 20px;font-weight:600;font-size:1rem}
+.flow .arrow{color:var(--rausch);font-weight:800;font-size:1.2rem}
+.contact{
+  margin-top:38px;padding-top:24px;border-top:1px solid var(--hairline);
+  display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;font-size:1rem;color:var(--muted);
+}
+.contact strong{color:var(--ink)}
+.contact .dot{width:4px;height:4px;border-radius:50%;background:var(--hairline);display:inline-block}
+
+/* ---------- Chrome: progress + counter + hint ---------- */
+.progress{position:fixed;top:0;left:0;height:3px;background:var(--rausch);width:0;z-index:50;transition:width .25s ease}
+.counter{position:fixed;right:22px;bottom:18px;z-index:50;font-size:.82rem;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.counter b{color:var(--ink)}
+.hint{position:fixed;left:22px;bottom:18px;z-index:50;font-size:.78rem;color:var(--muted-soft);display:flex;align-items:center;gap:8px}
+.hint kbd{font-family:var(--font);font-size:.72rem;border:1px solid var(--hairline);border-bottom-width:2px;border-radius:6px;padding:2px 7px;color:var(--muted);background:var(--canvas)}
+.brandmark{position:fixed;left:22px;top:16px;z-index:50;font-weight:800;font-size:.85rem;letter-spacing:-.01em;color:var(--ink)}
+.brandmark span{color:var(--rausch)}
+
+@media(max-width:760px){
+  .two,.zlist{grid-template-columns:1fr}
+  .vs{display:none}
+  .ticks{flex-wrap:wrap}
+  .zone{flex:1 0 44%}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="brandmark">VIBE<span>·</span>CODING FEST 26</div>
+<div class="counter"><b id="cur">1</b> / <span id="tot">9</span></div>
+<div class="hint"><kbd>→</kbd><kbd>↓</kbd> další · <kbd>←</kbd><kbd>↑</kbd> zpět · nebo roluj</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 — HÁK -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Vibe Coding Fest · 2. 6. 2026 · Ostrava</div>
+      <div class="stat">91&nbsp;%</div>
+      <h1 class="title-1">Funguje to.<br>Hotové to&nbsp;<span class="accent">není</span>.</h1>
+      <p class="lead">Devět z deseti řádků, které dnes vygeneruje AI, na první pohled funguje. A přesto se v nich skrývají tisíce chyb, které uvidíte až později. „Vypadá hotově" a „je vyzrálé" nejsou totéž.</p>
+      <div class="byline">
+        <strong>Michal Bočvarov</strong><span class="dot"></span>
+        Zarámování: vibecoding × AI engineering<span class="dot"></span>
+        bocvarov@gmail.com<span class="dot"></span>774 411 716<span class="dot"></span>github.com/bocvarov/VCF
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 — ŠPATNÁ OTÁZKA -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Špatná otázka</div>
+      <h2>Jsi <span class="strike">vibecoder</span>, nebo <span class="strike">AI&nbsp;engineer</span>?</h2>
+      <div class="two rel">
+        <div class="card">
+          <div class="k">vibecoder</div>
+          <h3>Kódí „od boku"</h3>
+          <p>Řekne AI, co chce, a věří výsledku. Rychlé, hravé, intuitivní.</p>
+        </div>
+        <div class="vs">vs</div>
+        <div class="card">
+          <div class="k">AI engineer</div>
+          <h3>Řídí systém</h3>
+          <p>Definuje, jak se má systém chovat — plán, pravidla, kontrola.</p>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:30px">Tahle otázka tě škatulkuje na „horšího" a „lepšího" vývojáře — ale <span class="accent">neporadí ti, co máš dělat zítra</span>.</p>
+    </div>
+  </section>
+
+  <!-- 3 — SPRÁVNÁ OTÁZKA / POSUVNÍK -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Správná otázka</div>
+      <h2>Nejde o to, <span class="tr">kdo jsi</span>.<br>Jde o to, v jakém <span class="accent">režimu</span> zrovna pracuješ.</h2>
+      <div class="slider-wrap">
+        <div class="slider-ends">
+          <div class="end">vibe <small>improvizace „od boku"</small></div>
+          <div class="end" style="text-align:right">verified <small>ověřený výsledek</small></div>
+        </div>
+        <div class="track"></div>
+      </div>
+      <div class="defbox">Posuvník říká, <strong>kolik záměru, kontextu a ověření</strong> musíš dodat, aby byl výstup AI dost spolehlivý pro daný typ změny.</div>
+    </div>
+  </section>
+
+  <!-- 4 — DVA MODIFIKÁTORY -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Co tě tlačí doprava</div>
+      <h2>Dvě věci rozhodují,<br>jak rychle se posuneš&nbsp;<span class="accent">doprava</span></h2>
+      <div class="two">
+        <div class="card">
+          <div class="k">Modifikátor 1</div>
+          <h3>Znalost kódu</h3>
+          <p>Čím <b>méně</b> rozumím kódu, tím <b>víc</b> potřebuju explicitní plán a ověření — nemůžu se spolehnout, že chybu poznám sám.</p>
+        </div>
+        <div class="card">
+          <div class="k">Modifikátor 2</div>
+          <h3>Dosah chyby <span class="tr" style="font-weight:500;font-size:.9rem">(blast radius)</span></h3>
+          <p>Dělám to <b>pro sebe</b>, nebo <b>pro tisíce lidí</b>? Čím větší dopad, tím méně si můžu dovolit improvizaci.</p>
+        </div>
+      </div>
+      <p class="note"><b>Autonomie AI tu není cíl — je důsledek.</b> Vyšší samostatnost si můžeš dovolit teprve tehdy, když máš plán, kontext a ověření.</p>
+    </div>
+  </section>
+
+  <!-- 5 — POSUVNÍK = 4 ÚROVNĚ -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Jeden posuvník, čtyři úrovně</div>
+      <h2>Stejný posuvník = <span class="accent">úrovně festivalu</span></h2>
+      <div class="slider-wrap">
+        <div class="slider-ends">
+          <div class="end">vibe <small>improvizace</small></div>
+          <div class="end" style="text-align:right">verified <small>ověření</small></div>
+        </div>
+        <div class="track"></div>
+        <div class="ticks">
+          <div class="zone"><div class="pin"></div><div class="lvl">LVL 1</div><div class="nm">Zvědavec</div><div class="ds">hraju si, učím se</div></div>
+          <div class="zone"><div class="pin"></div><div class="lvl">LVL 2</div><div class="nm">Pískoviště</div><div class="ds">stavím první věci</div></div>
+          <div class="zone"><div class="pin"></div><div class="lvl">LVL 3</div><div class="nm">Shipper</div><div class="ds">vypouštím ven</div></div>
+          <div class="zone"><div class="pin"></div><div class="lvl">LVL 4</div><div class="nm">Operátor</div><div class="ds">provozuji a hlídám</div></div>
+        </div>
+      </div>
+      <p class="note">Nepřeskakuješ úrovně podle toho, kdo jsi — posouváš se podle <b>rizika a jasnosti záměru</b>.</p>
+    </div>
+  </section>
+
+  <!-- 6 — VLEVO -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Vlevo na posuvníku · improvizuj</div>
+      <h2>Stačí prompt, obrázek<br>a rychlá <span class="accent">zpětná vazba</span></h2>
+      <div class="zlist">
+        <div class="zcard">
+          <div class="badge">LVL 1 · Zvědavec</div>
+          <h3>Hraju si</h3>
+          <p>Napíšu, co chci, hodím screenshot a hned vidím výsledek. Učím se, zkouším, bavím se. Žádná pravidla navíc.</p>
+        </div>
+        <div class="zcard">
+          <div class="badge">LVL 2 · Pískoviště</div>
+          <h3>Stavím první věci</h3>
+          <p>Vedená tvorba — reálný obsah, komponenta po komponentě, jednoduchý plán dopředu. Pořád jen pro mě a pár lidí.</p>
+        </div>
+      </div>
+      <p class="note"><b>Kdy to stačí:</b> malé, vratné a levné experimenty. Když se to pokazí, nic se neděje — smažu a zkusím znovu.</p>
+    </div>
+  </section>
+
+  <!-- 7 — VPRAVO -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Vpravo na posuvníku · ověřuj</div>
+      <h2>Bez plánu a ověření<br>už <span class="accent">nepokračuj</span></h2>
+      <div class="zlist">
+        <div class="zcard">
+          <div class="badge" style="background:var(--rausch)">LVL 3 · Shipper</div>
+          <h3>Vypouštím ven</h3>
+          <p>Nejdřív plán nebo zadání (specifikace), pak teprve kód. A nepustím to dál bez ověření — test, sestavení (build), kontrola v prohlížeči.</p>
+        </div>
+        <div class="zcard">
+          <div class="badge" style="background:var(--rausch)">LVL 4 · Operátor</div>
+          <h3>Provozuji a hlídám</h3>
+          <p>Bezpečnost, role a oprávnění, dohledatelnost (audit), snadný návrat zpět (rollback). Tady už chyba stojí peníze i reputaci.</p>
+        </div>
+      </div>
+      <p class="note"><b>Kdy je to nutné:</b> dopad na tisíce lidí, osobní data, platby — všude, kde je chyba drahá a těžko se bere zpět.</p>
+    </div>
+  </section>
+
+  <!-- 8 — 5 OTÁZEK -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Jak poznám, že je čas doprava</div>
+      <h2>Pět otázek <span class="accent">před každým úkolem</span></h2>
+      <div class="qlist">
+        <div class="q"><div class="num">1</div><span class="t">Rozumím dobře cíli?</span></div>
+        <div class="q"><div class="num">2</div><span class="t">Rozumím kódu a tématu (doméně)?</span></div>
+        <div class="q"><div class="num">3</div><span class="t">Jak drahá je chyba?</span></div>
+        <div class="q"><div class="num">4</div><span class="t">Vrátím změnu snadno zpět?</span></div>
+        <div class="q red"><div class="num">5</div><span class="t">Mám čím to ověřit? A jde o bezpečnost nebo reputaci?</span></div>
+      </div>
+      <p class="note">Čím víc odpovědí jde do <span class="accent">červené</span>, tím víc se posouváš doprava — k plánu, kontextu a ověření.</p>
+    </div>
+  </section>
+
+  <!-- 9 — ODNES SI -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Odnes si jedno</div>
+      <div class="big-take">Vlevo <span class="accent">improvizuj</span>.<br>Vpravo <span class="accent">ověřuj</span>.<br>Posouvej se podle rizika, ne podle nálepky.</div>
+      <p class="lead">Na tomhle se dnes shodují všechny velké nástroje (Claude Code, Cursor, Lovable, v0, Copilot). Stejný recept pod různými jmény:</p>
+      <div class="flow">
+        <span class="pill">plán</span><span class="arrow">→</span>
+        <span class="pill">kontext</span><span class="arrow">→</span>
+        <span class="pill">ověření</span><span class="arrow">→</span>
+        <span class="pill">revize (review)</span>
+      </div>
+      <div class="contact">
+        <strong>Michal Bočvarov</strong><span class="dot"></span>
+        bocvarov@gmail.com<span class="dot"></span>
+        774 411 716<span class="dot"></span>
+        github.com/bocvarov/VCF<span class="dot"></span>
+        <span class="accent" style="font-weight:600">Díky!</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  var deck=document.getElementById('deck');
+  var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total=slides.length;
+  document.getElementById('tot').textContent=total;
+  var curEl=document.getElementById('cur');
+  var progress=document.getElementById('progress');
+
+  function currentIndex(){
+    var i=Math.round(deck.scrollTop/window.innerHeight);
+    return Math.max(0,Math.min(total-1,i));
+  }
+  function go(i){
+    i=Math.max(0,Math.min(total-1,i));
+    slides[i].scrollIntoView({behavior:'smooth'});
+  }
+  function update(){
+    var i=currentIndex();
+    curEl.textContent=i+1;
+    progress.style.width=((i)/(total-1)*100)+'%';
+  }
+  deck.addEventListener('scroll',function(){window.requestAnimationFrame(update)});
+  window.addEventListener('resize',update);
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){
+      e.preventDefault();go(currentIndex()+1);
+    }else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){
+      e.preventDefault();go(currentIndex()-1);
+    }else if(e.key==='Home'){e.preventDefault();go(0);}
+    else if(e.key==='End'){e.preventDefault();go(total-1);}
+  });
+  update();
+})();
+</script>
+</body>
+</html>
