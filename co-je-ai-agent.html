@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Co je to AI agent? — šest jednoduchých pohledů</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --rausch:#FF5A5F; --rausch-dark:#E0484D;
+    --ink:#222222; --gray:#717171; --gray-soft:#9A9A9A;
+    --line:#EBEBEB; --line-strong:#DDDDDD;
+    --bg:#FFFFFF; --bg-alt:#F7F7F7; --bg-card:#FBFBFB;
+    --radius:18px; --radius-sm:12px;
+    --shadow:0 6px 22px rgba(0,0,0,0.06);
+    --shadow-hover:0 14px 34px rgba(0,0,0,0.10);
+    --c-purple:#4D38B8; --c-teal:#0C7A6E; --c-blue:#1C5FB0;
+    --c-green:#2E7D43; --c-amber:#9A6A00;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif; font-size:17px; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 24px;}
+
+  /* Sticky header */
+  header.bar{
+    position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.86);
+    backdrop-filter:saturate(180%) blur(12px); border-bottom:1px solid var(--line);
+  }
+  .bar-in{max-width:880px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:16px; letter-spacing:-0.01em;}
+  .dot{width:11px; height:11px; border-radius:50%; background:var(--rausch);}
+  .bar-nav{display:flex; gap:6px; flex-wrap:wrap;}
+  .bar-nav a{
+    font-size:13px; font-weight:500; color:var(--gray); text-decoration:none;
+    padding:6px 11px; border-radius:999px; transition:.18s;
+  }
+  .bar-nav a:hover{color:var(--ink); background:var(--bg-alt);}
+
+  /* Hero */
+  .hero{padding:72px 0 28px;}
+  .kicker{
+    display:inline-block; font-size:13px; font-weight:600; letter-spacing:.02em;
+    color:var(--rausch-dark); background:#FFECEC; padding:6px 13px; border-radius:999px; margin-bottom:22px;
+  }
+  h1{
+    font-size:clamp(38px,6.4vw,60px); line-height:1.05; font-weight:800;
+    letter-spacing:-0.035em; margin:0 0 18px;
+  }
+  .sub{font-size:20px; color:var(--gray); max-width:620px; margin:0 0 8px; line-height:1.55;}
+
+  /* Formula */
+  .formula{
+    margin:40px 0 8px; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:var(--radius); padding:30px 30px 26px; box-shadow:var(--shadow);
+  }
+  .formula .eq{font-size:clamp(19px,3.2vw,26px); font-weight:700; letter-spacing:-0.02em; margin:0 0 6px; line-height:1.35;}
+  .formula .eq .op{color:var(--gray-soft); font-weight:500; margin:0 4px;}
+  .eq .w-purple{color:var(--c-purple);} .eq .w-teal{color:var(--c-teal);}
+  .eq .w-coral{color:var(--rausch);} .eq .w-blue{color:var(--c-blue);}
+  .formula .eq-note{color:var(--gray); font-size:15px; margin:6px 0 24px;}
+  .parts{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  .part{border-radius:var(--radius-sm); padding:16px 16px 15px; border:1px solid var(--line);}
+  .part .pt{font-weight:700; font-size:16px; margin-bottom:3px;}
+  .part .pd{font-size:13.5px; color:var(--gray); line-height:1.45;}
+  .p-purple{background:#EFEBFF;} .p-purple .pt{color:var(--c-purple);}
+  .p-teal{background:#E2F5F0;} .p-teal .pt{color:var(--c-teal);}
+  .p-coral{background:#FFEDED;} .p-coral .pt{color:var(--rausch-dark);}
+  .p-blue{background:#E9F1FE;} .p-blue .pt{color:var(--c-blue);}
+
+  /* Lens sections */
+  .lens{
+    background:var(--bg); border:1px solid var(--line); border-radius:var(--radius);
+    padding:34px 34px 30px; margin:26px 0; box-shadow:var(--shadow); transition:.3s;
+  }
+  .lens:hover{box-shadow:var(--shadow-hover); transform:translateY(-2px);}
+  .lens-head{display:flex; align-items:center; gap:14px; margin-bottom:6px;}
+  .badge{
+    flex:none; width:42px; height:42px; border-radius:13px; background:var(--rausch);
+    color:#fff; font-weight:700; font-size:17px; display:flex; align-items:center; justify-content:center;
+  }
+  .lens h2{font-size:25px; font-weight:700; letter-spacing:-0.025em; margin:0;}
+  .lead{font-size:17px; color:#3a3a3a; margin:14px 0 24px; max-width:680px;}
+  .lead b{color:var(--ink); font-weight:600;}
+  .figure{
+    background:var(--bg-alt); border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:22px 18px; margin:6px 0 4px;
+  }
+  .caption{font-size:14px; color:var(--gray); margin:16px 0 0; line-height:1.55;}
+
+  /* SVG text */
+  .svg-t{font-family:'Inter',sans-serif; font-weight:500; font-size:14px; fill:var(--ink);}
+  .svg-s{font-family:'Inter',sans-serif; font-weight:400; font-size:12px; fill:var(--gray);}
+
+  /* Code card */
+  .code{margin:6px 0 4px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); overflow:hidden; background:#fff;}
+  .code .tab{
+    display:flex; align-items:center; gap:8px; padding:11px 16px; background:var(--bg-alt);
+    border-bottom:1px solid var(--line); font-size:13px; font-weight:600; color:var(--gray);
+  }
+  .code .tab .fdot{width:9px; height:9px; border-radius:50%; background:var(--line-strong);}
+  .code pre{
+    margin:0; padding:20px 20px; overflow-x:auto;
+    font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace; font-size:14px; line-height:1.65; color:#2b2b2b;
+  }
+  .code .cmt{color:#9A9A9A;}
+  .code .kw{color:var(--c-purple); font-weight:600;}
+  .code .str{color:var(--c-teal);}
+  .code .h{color:var(--rausch-dark); font-weight:600;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin:18px 0 0; font-size:14px; color:var(--gray);}
+  .chip{display:inline-flex; align-items:center; gap:7px;}
+  .sw{width:11px; height:11px; border-radius:3px;}
+
+  /* Analogy editorial card */
+  .analogy{background:#FFF7F2; border:1px solid #FFE0D2;}
+  .analogy .lead{font-size:18.5px; color:#3a3a3a;}
+
+  /* Outro steps */
+  .outro{margin:40px 0 10px;}
+  .outro h3{font-size:22px; font-weight:700; letter-spacing:-0.02em; margin:0 0 6px;}
+  .outro .oh{color:var(--gray); margin:0 0 22px; font-size:16px;}
+  .steps{display:grid; gap:12px;}
+  .step{display:flex; gap:16px; align-items:flex-start; background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:16px 18px;}
+  .step .num{flex:none; width:30px; height:30px; border-radius:50%; background:var(--ink); color:#fff; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center;}
+  .step .txt{font-size:16px;}
+  .step .txt .q{color:var(--ink);}
+  .step .txt .ref{display:block; font-size:13px; color:var(--rausch-dark); font-weight:600; margin-top:3px;}
+
+  footer{border-top:1px solid var(--line); margin-top:54px; padding:30px 0 60px; color:var(--gray-soft); font-size:14px; text-align:center;}
+
+  @media (max-width:680px){
+    .parts{grid-template-columns:repeat(2,1fr);}
+    .lens{padding:24px 20px;} .lens h2{font-size:21px;}
+    .bar-nav{display:none;}
+    .hero{padding:48px 0 18px;}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .lens,.formula,.hero>*{opacity:0; transform:translateY(14px); animation:rise .6s cubic-bezier(.2,.7,.3,1) forwards;}
+    .hero .kicker{animation-delay:.02s} .hero h1{animation-delay:.08s} .hero .sub{animation-delay:.14s}
+    .formula{animation-delay:.2s}
+    .lens:nth-of-type(1){animation-delay:.06s} .lens:nth-of-type(2){animation-delay:.10s}
+    .lens:nth-of-type(3){animation-delay:.12s} .lens:nth-of-type(4){animation-delay:.12s}
+    @keyframes rise{to{opacity:1; transform:none;}}
+  }
+
+  /* ===== Pohled 07 — interaktivní simulace ===== */
+  .bonus{border:1px dashed var(--line-strong); background:var(--bg-card);}
+  .bonus .badge{background:var(--ink);}
+  .bonus-tag{margin-left:auto; align-self:flex-start; font-size:12px; font-weight:600; color:var(--gray); background:var(--bg-alt); border:1px solid var(--line); padding:5px 11px; border-radius:999px;}
+  .launch{display:inline-flex; align-items:center; gap:9px; cursor:pointer; background:var(--ink); color:#fff; border:none; font-family:inherit; font-size:16px; font-weight:600; padding:14px 22px; border-radius:12px; transition:.2s;}
+  .launch:hover{background:#000; transform:translateY(-1px);}
+  .launch .pl{font-size:13px; opacity:.7; font-weight:500;}
+  .sim{display:none; margin-top:24px;}
+  .sim.open{display:block;}
+  .sim-stage{position:relative; background:var(--bg-alt); border:1px solid var(--line); border-radius:14px; padding:20px 18px 22px;}
+  .sim-prompt{display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--line-strong); border-radius:12px; padding:13px 15px; margin-bottom:16px;}
+  .sim-prompt .who{flex:none; font-size:12px; font-weight:600; color:var(--gray); background:var(--bg-alt); border-radius:8px; padding:5px 9px;}
+  .sim-prompt .txt{font-size:15.5px;}
+  .orch{background:#FBFBFB; border:1px solid #EBEBEB; border-radius:12px; padding:14px;}
+  .orch-head{display:flex; align-items:center; gap:10px; margin-bottom:11px;}
+  .orch-brain{flex:none; width:32px; height:32px; border-radius:9px; background:#EFEBFF; border:1px solid #CFC4FF; display:flex; align-items:center; justify-content:center; color:#4D38B8; font-size:14px;}
+  .orch-title{font-weight:600; font-size:15px; line-height:1.1;}
+  .orch-sub{font-size:12.5px; color:var(--gray);}
+  .orch-rows{display:flex; flex-direction:column; gap:7px; min-height:46px;}
+  .row{display:none; font-size:13.5px; border-radius:9px; padding:9px 12px; border:1px solid transparent; line-height:1.35;}
+  .row.is-shown{display:block; animation:rowin .45s cubic-bezier(.2,.7,.3,1);}
+  .row.r-user{background:#E9F1FE; border-color:#BBD7F7; color:#1C5FB0;}
+  .row.r-plan{background:#EFEBFF; border-color:#CFC4FF; color:#4D38B8;}
+  .row.r-sum{background:#fff; border-color:#DDDDDD; color:#555;}
+  .row.r-sum .tag{color:#0C7A6E; font-weight:600;}
+  .row.r-report{background:#FFF3DE; border-color:#FCDFA1; color:#9A6A00;}
+  .row.r-final{background:#EAF6ED; border-color:#C2E6CC; color:#2E7D43; font-weight:600;}
+  .row .up{color:var(--gray-soft); font-weight:700; margin-right:6px;}
+  @keyframes rowin{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+  .fanout{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:2px;}
+  .lane{display:flex; flex-direction:column;}
+  .conn{height:28px; display:flex; justify-content:center;}
+  .conn i{display:block; width:2px; height:100%; background:var(--line-strong); border-radius:2px;}
+  .conn.active i{background:repeating-linear-gradient(180deg,#4D38B8 0 6px,transparent 6px 12px); background-size:2px 12px; animation:flowdown .6s linear infinite;}
+  .conn.done i{background:#C2E6CC;}
+  @keyframes flowdown{to{background-position:0 12px;}}
+  .worker{background:#fff; border:1px solid var(--line); border-radius:12px; padding:13px; opacity:.42; filter:grayscale(.35); transition:.4s;}
+  .worker.is-shown{opacity:1; filter:none;}
+  .worker.waiting{opacity:.72;}
+  .worker-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px;}
+  .worker-name{font-weight:600; font-size:13.5px; line-height:1.2;}
+  .status{flex:none; font-size:11px; font-weight:600; border-radius:999px; padding:3px 9px; white-space:nowrap;}
+  .status.s-wait{background:#F2F2F2; color:#8A8A8A;}
+  .status.s-run{background:#FFECEC; color:#C0353A;}
+  .status.s-done{background:#EAF6ED; color:#2E7D43;}
+  .skillchip{display:inline-block; font-size:11.5px; font-weight:600; color:#9A6A00; background:#FFF3DE; border:1px solid #FCDFA1; border-radius:7px; padding:3px 8px; margin-bottom:9px;}
+  .skillchip .f{opacity:.6;}
+  .tools{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+  .tool{font-size:11px; color:#0C7A6E; background:#E2F5F0; border:1px solid #A6E2D6; border-radius:7px; padding:3px 8px;}
+  .tool.none{color:#8A8A8A; background:#F2F2F2; border-color:#DDDDDD;}
+  .miniloop{display:flex; gap:5px; flex-wrap:wrap;}
+  .ml{font-size:11px; color:#8A8A8A; background:var(--bg-alt); border:1px solid var(--line); border-radius:6px; padding:3px 7px;}
+  .worker.running .ml.m1{animation:mlc 1.5s ease-in-out infinite;}
+  .worker.running .ml.m2{animation:mlc 1.5s ease-in-out infinite .5s;}
+  .worker.running .ml.m3{animation:mlc 1.5s ease-in-out infinite 1s;}
+  @keyframes mlc{0%,100%{background:var(--bg-alt); color:#8A8A8A; border-color:var(--line);} 30%{background:#EFEBFF; color:#4D38B8; border-color:#CFC4FF;}}
+  .donecheck{display:none; font-size:11.5px; color:#2E7D43; font-weight:600;}
+  .worker.done .miniloop{display:none;}
+  .worker.done .donecheck{display:block;}
+  .ownwin{font-size:10.5px; color:var(--gray-soft); margin-top:9px;}
+  .meters{margin-top:18px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 16px 18px;}
+  .meters h4{font-size:13px; font-weight:600; color:var(--gray); margin:0 0 13px;}
+  .meter{margin-bottom:13px;}
+  .meter:last-child{margin-bottom:0;}
+  .meter .ml-top{display:flex; align-items:center; justify-content:space-between; font-size:13.5px; margin-bottom:6px;}
+  .meter .name{font-weight:600;}
+  .meter .pct{font-variant-numeric:tabular-nums; color:var(--gray);}
+  .bar{height:12px; border-radius:999px; background:#F0F0F0; overflow:hidden;}
+  .bar i{display:block; height:100%; width:6%; border-radius:999px; background:#2E7D43; transition:width .6s cubic-bezier(.2,.7,.3,1), background .4s;}
+  .meter.over .pct{color:#E0484D; font-weight:700;}
+  .over-badge{display:none; font-size:10.5px; font-weight:700; color:#fff; background:#E0484D; border-radius:6px; padding:2px 7px; margin-left:9px; vertical-align:middle;}
+  .meter.over .over-badge{display:inline-block;}
+  .sim-caption{margin-top:16px; min-height:44px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 15px; font-size:15px; line-height:1.45; display:flex; align-items:center; gap:11px;}
+  .sim-caption .cdot{flex:none; width:9px; height:9px; border-radius:3px; background:var(--rausch);}
+  .sim-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px;}
+  .ctrl{display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; color:var(--ink); background:#fff; border:1px solid var(--line-strong); border-radius:10px; padding:9px 14px; transition:.18s;}
+  .ctrl:hover:not(:disabled){border-color:var(--ink);}
+  .ctrl:disabled{opacity:.4; cursor:default;}
+  .ctrl.primary{background:var(--rausch); color:#fff; border-color:var(--rausch); min-width:118px; justify-content:center;}
+  .ctrl.primary:hover{background:var(--rausch-dark); border-color:var(--rausch-dark);}
+  .dots{display:flex; gap:7px; margin:0 4px;}
+  .dots button{width:9px; height:9px; border-radius:50%; background:var(--line-strong); cursor:pointer; transition:.2s; border:none; padding:0;}
+  .dots button.on{background:var(--rausch); transform:scale(1.3);}
+  .speed{display:flex; border:1px solid var(--line-strong); border-radius:10px; overflow:hidden; margin-left:auto;}
+  .speed button{font-family:inherit; font-size:13px; font-weight:600; color:var(--gray); background:#fff; border:none; border-left:1px solid var(--line); padding:9px 11px; cursor:pointer;}
+  .speed button:first-child{border-left:none;}
+  .speed button.on{background:var(--ink); color:#fff;}
+  @keyframes pulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.14);}}
+  .orch-brain.think{animation:pulse 1.1s ease-in-out infinite;}
+  @media (max-width:640px){
+    .fanout{grid-template-columns:1fr;}
+    .conn{height:20px;}
+    .speed{margin-left:0;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .conn.active i{animation:none;}
+    .worker.running .ml{animation:none;}
+    .orch-brain.think{animation:none;}
+    .row.is-shown{animation:none;}
+    .bar i{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand"><span class="dot"></span> AI agent — srozumitelně</div>
+    <nav class="bar-nav">
+      <a href="#p1">Chatbot</a>
+      <a href="#p2">Smyčka</a>
+      <a href="#p3">Paměť</a>
+      <a href="#p4">Skilly</a>
+      <a href="#p5">Kód</a>
+      <a href="#p6">Analogie</a>
+      <a href="#p7">Bonus</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="kicker">Pro úplné začátečníky · bez programování</span>
+    <h1>Co je to AI&nbsp;agent?</h1>
+    <p class="sub">Šest jednoduchých pohledů na jednu jedinou myšlenku. Každý osvětluje jiný kousek — dohromady dají celý obrázek.</p>
+
+    <div class="formula">
+      <p class="eq">
+        Agent =
+        <span class="w-purple">Mozek</span><span class="op">+</span>
+        <span class="w-teal">Ruce</span><span class="op">+</span>
+        <span class="w-coral">Smyčka</span><span class="op">+</span>
+        <span class="w-blue">Paměť</span>
+      </p>
+      <p class="eq-note">Chatbot odpoví na otázku a tím to končí. Agent dostane <i>cíl</i> a sám si ho doběhne — a k tomu potřebuje tyhle čtyři věci:</p>
+      <div class="parts">
+        <div class="part p-purple"><div class="pt">Mozek</div><div class="pd">model (LLM), který se rozhoduje, co dál</div></div>
+        <div class="part p-teal"><div class="pt">Ruce</div><div class="pd">nástroje, kterými vykonává akce</div></div>
+        <div class="part p-coral"><div class="pt">Smyčka</div><div class="pd">opakuje kroky, dokud není hotovo</div></div>
+        <div class="part p-blue"><div class="pt">Paměť</div><div class="pd">pamatuje si, co už udělal</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- POHLED 1 — AGENT VS CHATBOT -->
+  <section class="lens" id="p1">
+    <div class="lens-head"><span class="badge">01</span><h2>Začneme od toho, co znáš</h2></div>
+    <p class="lead">Chatbot je <b>přímka</b>: otázka&nbsp;→&nbsp;odpověď a konec. Agent je <b>ten samý mozek</b>, ale dostal nástroje a běží ve smyčce. Ten jediný rozdíl (kolečko na prostředním boxu) udělá z poradce samostatného asistenta.</p>
+    <div class="figure">
+      <svg viewBox="0 0 680 316" width="100%" role="img" aria-label="Chatbot versus AI agent">
+        <defs>
+          <marker id="ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#A0A0A0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+          <marker id="arC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#FF5A5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+        </defs>
+        <line x1="340" y1="44" x2="340" y2="292" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="4 5"/>
+
+        <text class="svg-t" x="160" y="56" text-anchor="middle">Chatbot</text>
+        <text class="svg-s" x="160" y="76" text-anchor="middle">jeden dotaz → odpověď</text>
+        <rect x="90" y="98" width="140" height="44" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="160" y="120" text-anchor="middle" dominant-baseline="central" fill="#555555">Otázka</text>
+        <rect x="90" y="162" width="140" height="56" rx="12" fill="#EFEBFF" stroke="#CFC4FF"/>
+        <text class="svg-t" x="160" y="182" text-anchor="middle" dominant-baseline="central" fill="#4D38B8">Mozek (LLM)</text>
+        <text class="svg-s" x="160" y="200" text-anchor="middle" dominant-baseline="central" fill="#8273D6">jen text ven</text>
+        <rect x="90" y="238" width="140" height="44" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="160" y="260" text-anchor="middle" dominant-baseline="central" fill="#555555">Odpověď</text>
+        <line x1="160" y1="142" x2="160" y2="162" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar1)"/>
+        <line x1="160" y1="218" x2="160" y2="238" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar1)"/>
+
+        <text class="svg-t" x="520" y="56" text-anchor="middle">AI agent</text>
+        <text class="svg-s" x="520" y="76" text-anchor="middle">úkol → pracuje sám</text>
+        <rect x="450" y="98" width="140" height="44" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="520" y="120" text-anchor="middle" dominant-baseline="central" fill="#555555">Cíl / úkol</text>
+        <rect x="450" y="162" width="140" height="56" rx="12" fill="#EFEBFF" stroke="#CFC4FF"/>
+        <text class="svg-t" x="520" y="182" text-anchor="middle" dominant-baseline="central" fill="#4D38B8">Mozek (LLM)</text>
+        <text class="svg-s" x="520" y="200" text-anchor="middle" dominant-baseline="central" fill="#8273D6">nástroje + smyčka</text>
+        <rect x="450" y="238" width="140" height="44" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="520" y="260" text-anchor="middle" dominant-baseline="central" fill="#555555">Výsledek</text>
+        <line x1="520" y1="142" x2="520" y2="162" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar1)"/>
+        <line x1="520" y1="218" x2="520" y2="238" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar1)"/>
+        <path d="M590 174 C622 174,630 182,630 190 C630 198,622 206,590 206" fill="none" stroke="#FF5A5F" stroke-width="1.5" marker-end="url(#arC)"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- POHLED 2 — SMYČKA -->
+  <section class="lens" id="p2">
+    <div class="lens-head"><span class="badge">02</span><h2>Jádro: agent běží v kolečku</h2></div>
+    <p class="lead">Tohle je celé jádro. Mozek se rozhodne, co udělat&nbsp;→&nbsp;nástroj to vykoná&nbsp;→&nbsp;přijde výsledek&nbsp;→&nbsp;mozek se na něj podívá a rozhodne znovu. <b>Opakuje se to, dokud mozek neřekne »mám dost, odpovídám«.</b></p>
+    <div class="figure">
+      <svg viewBox="0 0 680 320" width="100%" role="img" aria-label="Smyčka AI agenta">
+        <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#A0A0A0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="40" y="24" width="170" height="40" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="125" y="44" text-anchor="middle" dominant-baseline="central" fill="#555555">Cíl / úkol</text>
+        <rect x="40" y="100" width="170" height="56" rx="12" fill="#EFEBFF" stroke="#CFC4FF"/>
+        <text class="svg-t" x="125" y="120" text-anchor="middle" dominant-baseline="central" fill="#4D38B8">Mozek (LLM)</text>
+        <text class="svg-s" x="125" y="138" text-anchor="middle" dominant-baseline="central" fill="#8273D6">rozhodne, co dál</text>
+        <rect x="270" y="100" width="160" height="56" rx="12" fill="#E2F5F0" stroke="#A6E2D6"/>
+        <text class="svg-t" x="350" y="120" text-anchor="middle" dominant-baseline="central" fill="#0C7A6E">Akce</text>
+        <text class="svg-s" x="350" y="138" text-anchor="middle" dominant-baseline="central" fill="#4FA99E">zavolá nástroj</text>
+        <rect x="480" y="100" width="160" height="56" rx="12" fill="#FFEDED" stroke="#FFCBCC"/>
+        <text class="svg-t" x="560" y="120" text-anchor="middle" dominant-baseline="central" fill="#C23A3F">Výsledek</text>
+        <text class="svg-s" x="560" y="138" text-anchor="middle" dominant-baseline="central" fill="#D8787C">co nástroj vrátil</text>
+        <rect x="40" y="232" width="170" height="56" rx="12" fill="#EAF6ED" stroke="#C2E6CC"/>
+        <text class="svg-t" x="125" y="252" text-anchor="middle" dominant-baseline="central" fill="#2E7D43">Odpověď</text>
+        <text class="svg-s" x="125" y="270" text-anchor="middle" dominant-baseline="central" fill="#6BA77C">když je hotovo</text>
+        <line x1="125" y1="64" x2="125" y2="100" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="210" y1="128" x2="270" y2="128" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="430" y1="128" x2="480" y2="128" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="80" y1="156" x2="80" y2="232" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <path d="M560 156 V200 H170 V156" fill="none" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <text class="svg-s" x="365" y="190" text-anchor="middle">ještě ne → opakuj</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- POHLED 3 — KONTEXTOVÉ OKNO -->
+  <section class="lens" id="p3">
+    <div class="lens-head"><span class="badge">03</span><h2>Kde si agent pamatuje, co dělal</h2></div>
+    <p class="lead">Všechno se zapisuje do jednoho »sešitu« — říká se mu <b>kontextové okno</b>. S každým krokem smyčky tam přibude řádek, takže mozek pokaždé vidí celou historii. Pozor: sešit má strop. Když se zaplní, nejstarší zápisky se musí shrnout nebo zahodit — proto agent časem »zapomíná«, co bylo na začátku.</p>
+    <div class="figure">
+      <svg viewBox="0 0 680 440" width="100%" role="img" aria-label="Kontextové okno jako paměť agenta">
+        <rect x="50" y="30" width="470" height="370" rx="16" fill="#FBFBFB" stroke="#EBEBEB"/>
+        <text class="svg-t" x="70" y="54" dominant-baseline="central">Kontextové okno</text>
+        <text class="svg-s" x="70" y="72" dominant-baseline="central">paměť agenta</text>
+
+        <rect x="72" y="88" width="426" height="38" rx="9" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="86" y="107" dominant-baseline="central" fill="#555555">Systémový prompt — pravidla + nástroje</text>
+        <rect x="72" y="131" width="426" height="38" rx="9" fill="#E9F1FE" stroke="#BBD7F7"/>
+        <text class="svg-t" x="86" y="150" dominant-baseline="central" fill="#1C5FB0">Uživatel — zadá úkol</text>
+        <rect x="72" y="174" width="426" height="38" rx="9" fill="#EFEBFF" stroke="#CFC4FF"/>
+        <text class="svg-t" x="86" y="193" dominant-baseline="central" fill="#4D38B8">AI — „použij nástroj A“</text>
+        <rect x="72" y="217" width="426" height="38" rx="9" fill="#E2F5F0" stroke="#A6E2D6"/>
+        <text class="svg-t" x="86" y="236" dominant-baseline="central" fill="#0C7A6E">Nástroj A — vrátí výsledek</text>
+        <rect x="72" y="260" width="426" height="38" rx="9" fill="#EFEBFF" stroke="#CFC4FF"/>
+        <text class="svg-t" x="86" y="279" dominant-baseline="central" fill="#4D38B8">AI — „použij nástroj B“</text>
+        <rect x="72" y="303" width="426" height="38" rx="9" fill="#E2F5F0" stroke="#A6E2D6"/>
+        <text class="svg-t" x="86" y="322" dominant-baseline="central" fill="#0C7A6E">Nástroj B — vrátí výsledek</text>
+        <rect x="72" y="346" width="426" height="38" rx="9" fill="#EAF6ED" stroke="#C2E6CC"/>
+        <text class="svg-t" x="86" y="365" dominant-baseline="central" fill="#2E7D43">AI — finální odpověď</text>
+
+        <line x1="500" y1="150" x2="538" y2="150" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="3 4"/>
+        <text class="svg-s" x="544" y="150" dominant-baseline="central">úkol od člověka</text>
+        <line x1="500" y1="258" x2="538" y2="258" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="3 4"/>
+        <text class="svg-s" x="544" y="252" dominant-baseline="central">smyčka sem</text>
+        <text class="svg-s" x="544" y="268" dominant-baseline="central">připisuje řádky</text>
+        <line x1="500" y1="365" x2="538" y2="365" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="3 4"/>
+        <text class="svg-s" x="544" y="365" dominant-baseline="central">hotová odpověď</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- POHLED 4 — SKILLY -->
+  <section class="lens" id="p4">
+    <div class="lens-head"><span class="badge">04</span><h2>Jak agentovi řekneš, jak se chovat</h2></div>
+    <p class="lead">Napíšeš mu návod do textového souboru — »<b>skill</b>«. Agent má na poličce víc takových návodů, ale vidí jen jejich <b>názvy</b>. Teprve když úkol sedí na popisek, načte si celý návod do paměti. Je to jako kuchařka: nenacpeš si do hlavy všechny recepty, otevřeš jen ten, který právě vaříš.</p>
+    <div class="figure">
+      <svg viewBox="0 0 680 360" width="100%" role="img" aria-label="Načtení skillu do kontextového okna">
+        <defs><marker id="ar4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#A0A0A0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <text class="svg-t" x="40" y="44" dominant-baseline="central">Skilly na disku</text>
+        <text class="svg-s" x="40" y="62" dominant-baseline="central">agent zná jen názvy</text>
+        <rect x="40" y="78" width="150" height="40" rx="12" fill="#FFF3DE" stroke="#FCDFA1" stroke-width="1.4"/>
+        <text class="svg-t" x="115" y="98" text-anchor="middle" dominant-baseline="central" fill="#9A6A00">researcher.md</text>
+        <rect x="40" y="128" width="150" height="40" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="115" y="148" text-anchor="middle" dominant-baseline="central" fill="#8A8A8A">coder.md</text>
+        <rect x="40" y="178" width="150" height="40" rx="12" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="115" y="198" text-anchor="middle" dominant-baseline="central" fill="#8A8A8A">writer.md</text>
+        <text class="svg-s" x="240" y="90" text-anchor="middle">načti</text>
+        <line x1="192" y1="98" x2="298" y2="110" stroke="#A0A0A0" stroke-width="1.5" marker-end="url(#ar4)"/>
+
+        <rect x="280" y="40" width="360" height="300" rx="16" fill="#FBFBFB" stroke="#EBEBEB"/>
+        <text class="svg-t" x="300" y="62" dominant-baseline="central">Kontextové okno</text>
+        <rect x="300" y="82" width="320" height="56" rx="12" fill="#FFF3DE" stroke="#FCDFA1" stroke-width="1.4"/>
+        <text class="svg-t" x="460" y="102" text-anchor="middle" dominant-baseline="central" fill="#9A6A00">researcher.md</text>
+        <text class="svg-s" x="460" y="120" text-anchor="middle" dominant-baseline="central" fill="#C09A4D">= návod, jak se chovat</text>
+        <rect x="300" y="148" width="320" height="34" rx="9" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="316" y="165" dominant-baseline="central" fill="#555555">Systémový prompt + nástroje</text>
+        <rect x="300" y="190" width="320" height="34" rx="9" fill="#E9F1FE" stroke="#BBD7F7"/>
+        <text class="svg-t" x="316" y="207" dominant-baseline="central" fill="#1C5FB0">Uživatel — úkol</text>
+        <rect x="300" y="232" width="320" height="40" rx="9" fill="#F2F2F2" stroke="#DDDDDD"/>
+        <text class="svg-t" x="316" y="246" dominant-baseline="central" fill="#555555">Smyčka</text>
+        <text class="svg-s" x="316" y="263" dominant-baseline="central">mozek → nástroj → výsledek</text>
+        <rect x="300" y="282" width="320" height="34" rx="9" fill="#EAF6ED" stroke="#C2E6CC"/>
+        <text class="svg-t" x="316" y="299" dominant-baseline="central" fill="#2E7D43">AI — odpověď</text>
+      </svg>
+    </div>
+    <p class="caption">Ukázka skillu — žádný kód, jen postup, pravidla a podmínka »kdy je hotovo« (ta se trefuje přesně do konce smyčky z pohledu&nbsp;02). Kdo umí napsat dobrý pracovní postup, umí napsat skill.</p>
+    <div class="code" style="margin-top:18px;">
+      <div class="tab"><span class="fdot"></span> researcher.md</div>
+<pre><span class="cmt">---</span>
+<span class="kw">name:</span> researcher
+<span class="kw">description:</span> Použij, když má agent něco do hloubky prozkoumat,
+  ověřit fakta nebo porovnat zdroje a vrátit doložený přehled.
+<span class="cmt">---</span>
+
+<span class="h"># Researcher</span>
+
+Jsi pečlivý rešeršista. Cílem je doložený závěr, ne rychlý dojem.
+
+<span class="h">## Postup</span>
+1. Rozlož otázku na 2–4 dílčí pod-otázky.
+2. Ke každé najdi aspoň dva nezávislé zdroje.
+3. Když si zdroje odporují, rozpor pojmenuj — nezametej ho.
+
+<span class="h">## Pravidla</span>
+- Nikdy si nevymýšlej fakta ani citace. Co nevíš, přiznej.
+- U každého klíčového tvrzení uveď zdroj.
+- Odpověď = krátké shrnutí + odrážky s důkazy. Žádná vata.
+
+<span class="h">## Hotovo, když</span>
+Každé tvrzení v závěru má oporu ve zdroji a rozpory jsou pojmenované.</pre>
+    </div>
+  </section>
+
+  <!-- POHLED 5 — KÓD -->
+  <section class="lens" id="p5">
+    <div class="lens-head"><span class="badge">05</span><h2>Pod kapotou je to jen cyklus</h2></div>
+    <p class="lead">Když nakoukneš dovnitř, celý agent je doslova jeden cyklus <b>while</b>. Žádné kouzlo. Tady je ve dvanácti řádcích — a potkává se v něm celý vzorec z úvodu.</p>
+    <div class="code">
+      <div class="tab"><span class="fdot"></span> agent.py — zjednodušený pseudokód</div>
+<pre>úkol = <span class="str">"Zjisti počasí v Ostravě a poraď, co si vzít na sebe"</span>
+
+paměť = [systémový_prompt, úkol]          <span class="cmt"># PAMĚŤ = kontextové okno</span>
+
+<span class="kw">while</span> True:                                <span class="cmt"># SMYČKA</span>
+    krok = llm(paměť)                      <span class="cmt"># MOZEK: co udělat dál?</span>
+    paměť.append(krok)                     <span class="cmt">#   ...a zapiš to do paměti</span>
+
+    <span class="kw">if</span> krok.je_hotovo:                     <span class="cmt"># mozek řekl: „mám dost informací“</span>
+        <span class="kw">break</span>
+
+    výsledek = spusť_nástroj(krok.nástroj) <span class="cmt"># RUCE: provede akci</span>
+    paměť.append(výsledek)                 <span class="cmt">#   výsledek si taky zapamatuj</span>
+
+odpověz(krok.text)                         <span class="cmt"># finální odpověď člověku</span></pre>
+    </div>
+    <div class="legend">
+      <span class="chip"><span class="sw" style="background:#4D38B8"></span> <code>llm()</code> = Mozek</span>
+      <span class="chip"><span class="sw" style="background:#0C7A6E"></span> <code>spusť_nástroj()</code> = Ruce</span>
+      <span class="chip"><span class="sw" style="background:#FF5A5F"></span> <code>while</code> = Smyčka</span>
+      <span class="chip"><span class="sw" style="background:#1C5FB0"></span> <code>paměť</code> = Paměť</span>
+    </div>
+  </section>
+
+  <!-- POHLED 6 — LIDSKÁ ANALOGIE -->
+  <section class="lens analogy" id="p6">
+    <div class="lens-head"><span class="badge">06</span><h2>Úplně bez techniky</h2></div>
+    <p class="lead">Agent je jako <b>nový asistent první den v práci</b>. Dáš mu úkol, ukážeš mu nástroje (e-mail, kalendář, internet, tiskárna) a on se sám rozhoduje, co kdy použít. Mezi kroky kouká do svých poznámek, aby věděl, kde skončil, a vrátí se až s hotovým výsledkem.</p>
+    <p class="lead" style="margin-bottom:0;">Chatbot je proti tomu kolega, kterého potkáš na chodbě — odpoví z hlavy a jde dál.</p>
+  </section>
+
+  <!-- POHLED 7 — BONUS: ORCHESTRÁTOR + SUB-AGENTI -->
+  <section class="lens bonus" id="p7">
+    <div class="lens-head"><span class="badge">07</span><h2>Bonus: jak to celé škáluje</h2><span class="bonus-tag">pro pokročilé</span></div>
+    <p class="lead">Velký úkol agent zvládne přesně díky pohledům 03 a 04. Hlavní agent (<b>orchestrátor</b>) ho rozloží a pro každý kus spustí <b>sub-agenta</b> — malý agent z pohledu 02 s vlastním skillem, vlastními nástroji a vlastní pamětí. Každý specialista si svůj nepořádek nechá u sebe a nahoru pošle jen čisté shrnutí. Pusť si to krok po kroku:</p>
+    <button class="launch" id="simLaunch"><span>▶</span> Spustit ukázku <span class="pl">· rešerše trhu</span></button>
+
+    <div class="sim" id="sim">
+      <div class="sim-stage">
+        <div class="sim-prompt"><span class="who">Uživatel</span><span class="txt">Udělej mi rešerši trhu: elektrokola v ČR.</span></div>
+
+        <div class="orch">
+          <div class="orch-head">
+            <div class="orch-brain" id="orchBrain">◆</div>
+            <div><div class="orch-title">Orchestrátor</div><div class="orch-sub">hlavní agent — jeho kontextové okno</div></div>
+          </div>
+          <div class="orch-rows" id="orchRows">
+            <div class="row r-user" data-show="0">Uživatel — zadání rešerše</div>
+            <div class="row r-plan" data-show="1">AI — plán: poptávka · konkurence · report (3 sub-agenti)</div>
+            <div class="row r-sum" data-show="4"><span class="up">↑</span> shrnutí od analytika <span class="tag">· 4 řádky</span></div>
+            <div class="row r-sum" data-show="4"><span class="up">↑</span> shrnutí od skeneru konkurence <span class="tag">· 5 řádků</span></div>
+            <div class="row r-report" data-show="6"><span class="up">↑</span> hotový report od pisatele</div>
+            <div class="row r-final" data-show="6">AI — finální odpověď uživateli</div>
+          </div>
+        </div>
+
+        <div class="fanout" id="fanout">
+          <div class="lane">
+            <div class="conn" data-conn="ab"><i></i></div>
+            <div class="worker" data-worker="A">
+              <div class="worker-head"><span class="worker-name">Analytik poptávky</span><span class="status s-wait">start</span></div>
+              <span class="skillchip">researcher<span class="f">.md</span></span>
+              <div class="tools"><span class="tool">web search</span></div>
+              <div class="miniloop"><span class="ml m1">mozek</span><span class="ml m2">nástroj</span><span class="ml m3">výsledek</span></div>
+              <div class="donecheck">✓ hotovo · vrací shrnutí</div>
+              <div class="ownwin">▤ vlastní paměť</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="conn" data-conn="ab"><i></i></div>
+            <div class="worker" data-worker="B">
+              <div class="worker-head"><span class="worker-name">Skener konkurence</span><span class="status s-wait">start</span></div>
+              <span class="skillchip">competitor<span class="f">.md</span></span>
+              <div class="tools"><span class="tool">web search</span><span class="tool">databáze</span></div>
+              <div class="miniloop"><span class="ml m1">mozek</span><span class="ml m2">nástroj</span><span class="ml m3">výsledek</span></div>
+              <div class="donecheck">✓ hotovo · vrací shrnutí</div>
+              <div class="ownwin">▤ vlastní paměť</div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="conn" data-conn="c"><i></i></div>
+            <div class="worker" data-worker="C">
+              <div class="worker-head"><span class="worker-name">Pisatel reportu</span><span class="status s-wait">čeká</span></div>
+              <span class="skillchip">writer<span class="f">.md</span></span>
+              <div class="tools"><span class="tool none">bez nástrojů</span></div>
+              <div class="miniloop"><span class="ml m1">mozek</span><span class="ml m2">text</span><span class="ml m3">report</span></div>
+              <div class="donecheck">✓ hotovo · vrací report</div>
+              <div class="ownwin">▤ vlastní paměť</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meters">
+        <h4>Zaplnění kontextového okna</h4>
+        <div class="meter" id="mOrch">
+          <div class="ml-top"><span class="name">Orchestrátor + 3 sub-agenti</span><span class="pct">6 %</span></div>
+          <div class="bar orch"><i></i></div>
+        </div>
+        <div class="meter" id="mSingle">
+          <div class="ml-top"><span class="name">Jeden agent sám<span class="over-badge">PŘETEČENO</span></span><span class="pct">6 %</span></div>
+          <div class="bar single"><i></i></div>
+        </div>
+      </div>
+
+      <div class="sim-caption"><span class="cdot"></span><span class="ctext" id="simCap">Úkol (prompt) přistane v okně orchestrátora.</span></div>
+
+      <div class="sim-controls">
+        <button class="ctrl" id="btnPrev">◀ Zpět</button>
+        <button class="ctrl primary" id="btnPlay">▶ Přehrát</button>
+        <button class="ctrl" id="btnNext">Další ▶</button>
+        <button class="ctrl" id="btnReset" title="Restart" aria-label="Restart">↺</button>
+        <div class="dots" id="simDots"></div>
+        <div class="speed" id="simSpeed">
+          <button data-spd="0.5">0,5×</button>
+          <button data-spd="1" class="on">1×</button>
+          <button data-spd="2">2×</button>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Zjednodušeno: v praxi může orchestrátor spouštět i víc sub-agentů a ti další. Princip ale zůstává — <b>vlastní okno + vlastní nástroje + nahoru jen shrnutí</b> = velké úkoly bez přetečení paměti.</p>
+  </section>
+
+  <!-- OUTRO -->
+  <section class="outro">
+    <h3>Jak to odvyprávět za 60 sekund</h3>
+    <p class="oh">Pořadí je záměrné — jde od toho, co posluchač zná, k tomu, co je nové.</p>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><span class="txt"><span class="q">„Znáš ChatGPT? Zeptáš se, odpoví. To je chatbot.“</span><span class="ref">→ pohled 01</span></span></div>
+      <div class="step"><span class="num">2</span><span class="txt"><span class="q">„Agent je ten samý mozek, ale dal jsi mu nástroje a necháš ho běhat ve smyčce.“</span><span class="ref">→ pohled 02</span></span></div>
+      <div class="step"><span class="num">3</span><span class="txt"><span class="q">„Sám se rozhoduje a pamatuje si průběh — tady v tom sešitu.“</span><span class="ref">→ pohled 03</span></span></div>
+      <div class="step"><span class="num">4</span><span class="txt"><span class="q">„A jak mu zadáš chování? Napíšeš mu návod v obyčejném textu.“</span><span class="ref">→ pohled 04</span></span></div>
+    </div>
+  </section>
+
+  <footer>
+    Materiál pro workshop · AI agent v šesti pohledech + bonus pro pokročilé
+  </footer>
+
+</div>
+<script>
+(function(){
+  var sim = document.getElementById('sim');
+  var launch = document.getElementById('simLaunch');
+  if(!sim || !launch) return;
+
+  var LAST = 7;
+  var phase = 0, playing = false, speed = 1, timer = null;
+
+  var caps = [
+    "Úkol (prompt) přistane v okně orchestrátora — hlavního agenta.",
+    "Orchestrátor si úkol přečte a rozloží ho na tři menší kusy.",
+    "Pro každý kus spustí sub-agenta: vlastní skill, vlastní nástroje, vlastní paměť. Pisatel zatím čeká.",
+    "Analytik a skener konkurence běží paralelně — každý ve své vlastní smyčce.",
+    "Hotovo. Nahoru posílají JEN krátké shrnutí, ne celý svůj postup.",
+    "Teď naběhne pisatel — čekal na oba — a z jejich shrnutí složí report.",
+    "Report jde nahoru, orchestrátor předá hotovou odpověď. Jeho okno zůstalo skoro prázdné.",
+    "A teď to podstatné: jeden agent sám by všechnu surovou práci tahal do jednoho okna — a přetekl by."
+  ];
+  var orchPct   = [6, 9, 12, 15, 24, 27, 31, 31];
+  var singlePct = [6, 11, 20, 52, 70, 90, 108, 116];
+
+  function q(s){ return sim.querySelector(s); }
+  function qa(s){ return sim.querySelectorAll(s); }
+
+  var dotsWrap = document.getElementById('simDots');
+  for(var i=0;i<=LAST;i++){
+    var b=document.createElement('button');
+    b.dataset.i=i; b.setAttribute('aria-label','Krok '+(i+1));
+    dotsWrap.appendChild(b);
+  }
+
+  var rows = qa('.row');
+  var wA = q('[data-worker="A"]'), wB = q('[data-worker="B"]'), wC = q('[data-worker="C"]');
+
+  function setWorker(el, o){
+    el.classList.toggle('is-shown', !!o.show);
+    el.classList.toggle('running', !!o.running);
+    el.classList.toggle('done', !!o.done);
+    el.classList.toggle('waiting', !!o.waiting);
+    var st = el.querySelector('.status');
+    st.className = 'status ' + (o.done?'s-done':o.running?'s-run':'s-wait');
+    st.textContent = o.done?'hotovo':o.running?'běží':o.waiting?'čeká':'start';
+  }
+  function colorFor(p){ return p<50 ? '#2E7D43' : (p<85 ? '#E0A100' : '#E0484D'); }
+
+  function render(){
+    rows.forEach(function(r){ r.classList.toggle('is-shown', phase >= +r.dataset.show); });
+    document.getElementById('orchBrain').classList.toggle('think', phase===1);
+
+    var abShow = phase>=2, abRun = phase===3, abDone = phase>=4;
+    setWorker(wA, {show:abShow, running:abRun, done:abDone});
+    setWorker(wB, {show:abShow, running:abRun, done:abDone});
+    setWorker(wC, {show:phase>=2, waiting:(phase>=2 && phase<5), running:phase===5, done:phase>=6});
+
+    qa('[data-conn="ab"]').forEach(function(c){
+      c.classList.toggle('active', phase===2 || phase===3);
+      c.classList.toggle('done', phase>=4);
+    });
+    qa('[data-conn="c"]').forEach(function(c){
+      c.classList.toggle('active', phase===5);
+      c.classList.toggle('done', phase>=6);
+    });
+
+    var o = orchPct[phase], s = singlePct[phase];
+    var mO = document.getElementById('mOrch'), mS = document.getElementById('mSingle');
+    mO.querySelector('.bar i').style.width = Math.min(o,100)+'%';
+    mO.querySelector('.pct').textContent = o+' %';
+    var sI = mS.querySelector('.bar i');
+    sI.style.width = Math.min(s,100)+'%';
+    sI.style.background = colorFor(s);
+    mS.querySelector('.pct').textContent = s+' %';
+    mS.classList.toggle('over', s>100);
+
+    document.getElementById('simCap').textContent = caps[phase];
+    Array.prototype.forEach.call(dotsWrap.children, function(d,i){ d.classList.toggle('on', i===phase); });
+    document.getElementById('btnPrev').disabled = (phase===0);
+    document.getElementById('btnNext').disabled = (phase===LAST);
+  }
+
+  function setPlayLabel(){
+    document.getElementById('btnPlay').textContent = playing ? '❚❚ Pauza' : (phase===LAST ? '↺ Znovu' : '▶ Přehrát');
+  }
+  function goTo(i){ phase = Math.max(0, Math.min(LAST, i)); render(); setPlayLabel(); }
+  function stop(){ playing=false; if(timer){ clearInterval(timer); timer=null; } setPlayLabel(); }
+  function intervalMs(){ return Math.round(2400/speed); }
+  function start(){
+    if(phase===LAST) goTo(0);
+    playing=true; setPlayLabel();
+    timer = setInterval(function(){ if(phase<LAST){ goTo(phase+1); } else { stop(); } }, intervalMs());
+  }
+
+  launch.addEventListener('click', function(){
+    sim.classList.add('open');
+    launch.style.display='none';
+    goTo(0);
+    sim.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  document.getElementById('btnNext').addEventListener('click', function(){ stop(); goTo(phase+1); });
+  document.getElementById('btnPrev').addEventListener('click', function(){ stop(); goTo(phase-1); });
+  document.getElementById('btnReset').addEventListener('click', function(){ stop(); goTo(0); });
+  document.getElementById('btnPlay').addEventListener('click', function(){ if(playing) stop(); else start(); });
+  dotsWrap.addEventListener('click', function(e){
+    var t = e.target.closest('button'); if(!t) return;
+    stop(); goTo(+t.dataset.i);
+  });
+  document.getElementById('simSpeed').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    speed = parseFloat(b.dataset.spd);
+    Array.prototype.forEach.call(this.children, function(x){ x.classList.toggle('on', x===b); });
+    if(playing){ clearInterval(timer); timer = setInterval(function(){ if(phase<LAST){ goTo(phase+1); } else { stop(); } }, intervalMs()); }
+  });
+
+  render(); setPlayLabel();
+})();
+</script>
+</body>
+</html>
