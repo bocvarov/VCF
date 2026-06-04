@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cesta kontextu — multi-agentní systém (v3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ====== Airbnb tokeny (airbnb-design.md) + tlumené výplně typů kartiček ====== */
+:root{
+  --primary:#ff385c;          /* Rausch — POUZE: Play CTA a tečka aktuálního kroku */
+  --primary-active:#e00b41;
+  --error:#c13515;            /* sémantický error — měřič ≥85 %, nepoužitelný result */
+  --canvas:#ffffff;
+  --surface-soft:#f7f7f7;
+  --surface-strong:#f2f2f2;
+  --hairline:#dddddd;
+  --hairline-soft:#ebebeb;
+  --border-strong:#c1c1c1;
+  --ink:#222222;
+  --body:#3f3f3f;
+  --muted:#6a6a6a;
+  --muted-soft:#929292;
+  --on-primary:#ffffff;
+  /* výplně typů kartiček — světlost ~93 %, ink text, žádná saturovaná duha */
+  --c-sys:#f2f2f2;            /* systémový prompt = infrastruktura, šedá */
+  --c-skill:#f3ebfa;          /* skill — světlá fialová (v duchu Luxe tokenu) */
+  --c-call:#e8f1fb;           /* tool call — světlá modrá */
+  --c-res:#f3f8fe;            /* tool result — modrá o stupeň světlejší (pár s callem) */
+  --c-dig:#fbf3da;            /* shrnutí (digest) — světlá žlutá */
+  --c-rep:#e9f5ec;            /* report — světlá zelená */
+  --r-sm:8px; --r-md:14px; --r-full:9999px;
+  --shadow:rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',Circular,-apple-system,system-ui,Roboto,'Helvetica Neue',sans-serif;
+  background:var(--canvas);color:var(--ink);overflow:hidden;
+}
+#viewport{width:100vw;height:100vh;overflow:hidden;position:relative}
+#stage{
+  width:1920px;height:1080px;position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(1);
+  display:flex;flex-direction:column;background:var(--canvas);
+}
+
+/* ====== Sticky komentářová lišta ====== */
+#capbar{
+  height:72px;flex:0 0 72px;display:flex;align-items:center;gap:24px;
+  padding:0 32px;border-bottom:1px solid var(--hairline);background:var(--canvas);z-index:5;
+}
+#capbar .brand{font-size:15px;font-weight:600;white-space:nowrap}
+#capbar .brand small{display:block;font-size:10.5px;font-weight:400;color:var(--muted)}
+#caption{flex:1;font-size:19px;font-weight:500;line-height:1.25;color:var(--ink);min-width:0}
+#stepPos{font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+#stepPos b{color:var(--ink)}
+/* fázový breadcrumb */
+#phases{display:flex;gap:4px;align-items:center;white-space:nowrap}
+#phases span{
+  font-size:10px;font-weight:600;color:var(--muted-soft);
+  padding:4px 8px;border-radius:var(--r-full);background:transparent;
+  transition:background .25s,color .25s;
+}
+#phases span.done{color:var(--muted)}
+#phases span.on{background:var(--ink);color:#fff}
+#phases i{color:var(--hairline);font-style:normal;font-size:10px}
+
+/* ====== Hrací plocha ====== */
+#board{flex:1;display:flex;gap:16px;padding:18px 24px 8px;min-height:0;position:relative}
+.col{
+  flex:1 1 0;display:flex;flex-direction:column;min-width:0;position:relative;
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);
+  transition:border-color .3s,opacity .35s,filter .35s,flex-grow .5s ease;
+}
+/* UI chat — odlišná podlaha: tohle je jediné okno, které uživatel vidí */
+.col[data-w="ui"]{background:var(--surface-soft)}
+.col[data-w="ui"] .col-head{background:var(--surface-soft)}
+/* AKTIVNÍ = 2px ink rám + surface-soft podbarvení celého okna */
+.col.active{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.col.active .col-head{background:var(--surface-soft)}
+.col.active .col-body{background:var(--surface-soft);border-radius:0 0 var(--r-md) var(--r-md)}
+/* BĚŽÍ, ale nemluví = výrazné vizuální potlačení celého okna */
+.col.run{opacity:.45;filter:grayscale(.9)}
+/* UKONČEN = potlačení + ✓ status */
+.col.done{opacity:.35;filter:grayscale(1)}
+.col.done .col-head .status{display:block}
+/* NENAROZENÉ okno neexistuje — sloupec je zkolabovaný na nulu */
+.col.ghost{flex-grow:0.0001;min-width:0;border-color:transparent;overflow:hidden;margin-left:0!important}
+.col.ghost .col-head,.col.ghost .col-body{display:none}
+/* materializace: šířka roste (flex-grow transition), obsah naskočí se zpožděním */
+.col.mat .col-head,.col.mat .col-body{animation:fadeIn .35s ease .45s both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.col-head{
+  flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid var(--hairline-soft);
+  background:var(--canvas);border-radius:var(--r-md) var(--r-md) 0 0;position:sticky;top:0;z-index:2;
+  transition:background .3s;
+}
+.col-head .t{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
+.col-head .t .ico{font-size:18px}
+.col-head .mode{
+  margin-left:auto;font-size:8px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;
+  padding:3px 8px;border-radius:var(--r-full);background:var(--surface-strong);color:var(--muted);white-space:nowrap;
+}
+.col-head .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.col-head .status{display:none;font-size:10.5px;font-weight:600;color:var(--muted);margin-top:6px}
+/* měřič kapacity — výplň INK; ≥85 % = sémantický error */
+.capwrap{display:flex;align-items:center;gap:8px;margin-top:8px}
+.caplabel{font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap}
+.meter{flex:1;height:6px;border-radius:var(--r-full);background:var(--surface-strong);overflow:hidden}
+.meter i{display:block;height:100%;width:0%;background:var(--ink);border-radius:var(--r-full);
+  transition:width .6s cubic-bezier(.22,.8,.3,1)}
+.meter.warn i{background:var(--error)}
+.capct{font-size:11px;font-weight:700;min-width:38px;text-align:right;color:var(--ink)}
+.meter.warn ~ .capct{color:var(--error)}
+/* tokenový čip „+N" */
+.chip{
+  font-size:10px;font-weight:700;color:var(--ink);background:var(--surface-strong);
+  padding:1px 7px;border-radius:var(--r-full);opacity:0;white-space:nowrap;
+}
+.chip.go{animation:chipGo 1.8s ease both}
+@keyframes chipGo{0%{opacity:0;transform:translateY(3px)}15%{opacity:1;transform:none}70%{opacity:1}100%{opacity:0}}
+
+.col-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--hairline) transparent;transition:background .3s}
+.col-body::-webkit-scrollbar{width:5px}
+.col-body::-webkit-scrollbar-thumb{background:var(--hairline);border-radius:var(--r-full)}
+
+/* ====== Backstage rámec (sloupce 2–5) ====== */
+#backstage{
+  flex:4.15 1 0;display:flex;min-width:0;position:relative;
+  border:1px solid var(--hairline);border-radius:18px;padding:14px 10px 10px;
+  transition:flex-grow .5s ease,border-color .5s;
+}
+#backstage.bs-empty{flex-grow:0.0001;border-color:transparent;overflow:hidden;padding:0}
+#backstage.bs-empty>*{display:none}
+#backstage>.bs-label{
+  position:absolute;top:-9px;left:18px;background:var(--canvas);padding:0 10px;
+  font-size:11px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;color:var(--muted);
+}
+#backcols{flex:1;display:flex;min-width:0}
+#backcols .col{margin-left:12px}
+#backcols .col:first-child{margin-left:0}
+
+/* ====== Kartičky — typ = tlumená výplň + tag (viz legenda) ====== */
+.row{font-size:12.5px;line-height:1.45;color:var(--body);border-radius:var(--r-sm);flex:0 0 auto;position:relative}
+.row.in{animation:rowIn .45s cubic-bezier(.22,.8,.3,1) both}
+@keyframes rowIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.row .tag{display:block;font-size:9px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+/* štítek pořadí kroku na kartičce — koreluje pořadí napříč okny (osa času) */
+.kn{font-style:normal;font-weight:700;color:var(--muted-soft);margin-right:5px}
+/* chat bubliny s avatary */
+.r-msg{display:flex;gap:8px;align-items:flex-end}
+.r-msg .av{font-size:17px;flex:0 0 auto;line-height:1}
+.r-msg .bub{padding:10px 12px;min-width:0}
+.r-msg.me{flex-direction:row-reverse}
+.r-msg.me .bub{background:var(--surface-strong);border-radius:14px 14px 4px 14px}
+.r-msg.sys .bub{background:#fff;border:1px solid var(--hairline);border-radius:14px 14px 14px 4px}
+/* indikátor „systém pracuje" — tři tečky */
+.r-typing .bub{background:#fff;border:1px solid var(--hairline-soft);border-radius:14px 14px 14px 4px;display:flex;gap:4px;padding:11px 13px}
+.r-typing .d{width:6px;height:6px;border-radius:50%;background:var(--muted-soft);animation:tp 1.2s ease-in-out infinite}
+.r-typing .d:nth-child(2){animation-delay:.18s}
+.r-typing .d:nth-child(3){animation-delay:.36s}
+@keyframes tp{0%,60%,100%{opacity:.35;transform:none}30%{opacity:1;transform:translateY(-2px)}}
+/* systémový prompt: šedá výplň — infrastruktura okna */
+.r-sys{background:var(--c-sys);border:1px solid var(--hairline-soft);padding:8px 10px;font-size:11.5px}
+/* úkol: bílá karta, 2px ink levá hrana, 📥 */
+.r-task{background:#fff;border:1px solid var(--hairline);border-left:2px solid var(--ink);padding:9px 11px}
+/* skill: fialová pilulka — VŽDY před úkolem */
+.r-skill{align-self:flex-start;font-size:11px;font-weight:600;color:var(--ink);
+  background:var(--c-skill);padding:5px 11px;border-radius:var(--r-full)}
+.r-plan{background:#fff;border:1px solid var(--hairline);padding:9px 11px}
+.r-plan ol{margin:2px 0 0 16px}
+.r-plan li{margin:2px 0}
+/* tool call: modrá, monospace, čárkovaný hairline, ink badge, odsazení */
+.r-call{border:1.5px dashed var(--hairline);background:var(--c-call);padding:8px 10px;margin-left:10px;
+  font-family:ui-monospace,'Cascadia Code',Consolas,monospace;font-size:11px}
+.r-call .tag{font-family:'Inter',sans-serif}
+.r-call .svc{float:right;font-size:9px;font-weight:700;background:var(--ink);color:#fff;
+  padding:2px 7px;border-radius:var(--r-full);font-family:'Inter',sans-serif;letter-spacing:.32px}
+/* tool result: světlejší modrá, odsazený pod callem */
+.r-res{background:var(--c-res);border:1px solid var(--hairline-soft);padding:8px 10px;margin-left:10px}
+.r-res .tag{color:var(--muted)}
+.r-res.bad .tag{color:var(--error)}
+/* interní poznámka (reasoning) / handoff: kurzíva, muted */
+.r-note{background:#fff;border:1px solid var(--hairline-soft);padding:8px 10px;font-style:italic;color:var(--muted)}
+.r-note .tag{font-style:normal}
+/* shrnutí (digest): žlutá, menší písmo */
+.r-digest{background:var(--c-dig);border:1px solid var(--hairline-soft);padding:8px 10px;font-size:11.5px}
+.r-digest .tag{color:var(--ink)}
+/* report: zelený mini-dokument */
+.r-rep{background:var(--c-rep);border:1px solid var(--hairline-soft);padding:9px 11px}
+.r-rep h4{font-size:12.5px;font-weight:600;margin-bottom:2px}
+
+/* ====== Lišta externích služeb ====== */
+#rail{
+  flex:0 0 128px;display:flex;flex-direction:column;gap:10px;
+  border:1px solid var(--hairline);border-radius:var(--r-md);padding:12px 10px;
+  background:var(--canvas);
+}
+#rail h3{font-size:9px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:2px}
+.svc-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;
+  border:1px solid var(--hairline-soft);border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--body);
+  transition:all .3s;background:var(--canvas);
+}
+.svc-item .si{font-size:19px}
+.svc-item.pulse{border-color:var(--ink);animation:svcPulse 1s ease-in-out 2}
+@keyframes svcPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,34,34,.18)}50%{box-shadow:0 0 0 7px rgba(34,34,34,0)}}
+
+/* ====== Spoje (SVG): úkol = ink · shrnutí = čárkovaná muted · služba = tečkovaná hairline ====== */
+#wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;overflow:visible}
+#wires path{fill:none;stroke-width:2.25}
+.w-task{stroke:var(--ink);stroke-dasharray:14 4;animation:dashFlow 1s linear infinite}
+.w-sum{stroke:var(--muted);stroke-dasharray:4 5;animation:dashFlowR 1.2s linear infinite}
+.w-svc{stroke:var(--hairline);stroke-dasharray:2 5;animation:dashFlow .8s linear infinite}
+@keyframes dashFlow{to{stroke-dashoffset:-36}}
+@keyframes dashFlowR{to{stroke-dashoffset:18}}
+.w-lbl{
+  font-size:11px;font-weight:600;fill:var(--muted);
+  paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;
+}
+
+/* ====== Swimlane časová osa ====== */
+#swim{flex:0 0 104px;padding:4px 24px;border-top:1px solid var(--hairline-soft)}
+#swimhead{display:flex;justify-content:flex-end;font-size:9px;font-weight:600;color:var(--muted-soft);padding:1px 0 2px}
+#swim .lane{display:flex;align-items:center;gap:8px;height:15px;margin:1.5px 0}
+#swim .lname{flex:0 0 130px;font-size:9.5px;font-weight:600;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#swim .track{flex:1;display:flex;gap:2px;height:9px}
+#swim .cell{flex:1;border-radius:3px;background:var(--surface-soft);cursor:pointer;transition:background .25s}
+#swim .cell.ph{border-left:2px solid var(--border-strong);border-radius:0 3px 3px 0}
+#swim .cell.on{background:#c7c7c7}
+#swim .cell.on.done{background:#9e9e9e}
+#swim .cell.cur{outline:2px solid var(--ink);outline-offset:1px}
+
+/* ====== Ovládání ====== */
+#controls{
+  flex:0 0 84px;display:flex;align-items:center;gap:16px;padding:0 32px;
+  border-top:1px solid var(--hairline);background:var(--canvas);
+}
+.btn{
+  font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;
+  height:44px;padding:0 18px;border-radius:var(--r-sm);background:#fff;color:var(--ink);
+  border:1px solid var(--ink);transition:background .15s;
+}
+.btn:hover{background:var(--surface-soft)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+/* Play = jediné primární CTA (Rausch moment č. 1) */
+.btn.primary{background:var(--primary);color:var(--on-primary);border:none;min-width:120px}
+.btn.primary:hover{background:var(--primary-active)}
+.btn.ghost{border:none;color:var(--muted);text-decoration:underline;padding:0 8px}
+#dots{display:flex;gap:5px;flex:1;justify-content:center;flex-wrap:wrap}
+#dots button{
+  width:12px;height:12px;border-radius:50%;border:1.5px solid var(--hairline);background:#fff;
+  cursor:pointer;padding:0;transition:all .2s;
+}
+#dots button.done{background:var(--surface-strong);border-color:var(--hairline)}
+/* tečka aktuálního kroku = Rausch moment č. 2 */
+#dots button.cur{background:var(--primary);border-color:var(--primary);transform:scale(1.35)}
+#speed{display:flex;border:1px solid var(--hairline);border-radius:var(--r-full);overflow:hidden}
+#speed button{
+  font-family:inherit;font-size:12.5px;font-weight:500;border:none;background:#fff;color:var(--muted);
+  padding:9px 14px;cursor:pointer;
+}
+#speed button.on{background:var(--ink);color:#fff;font-weight:600}
+#note{font-size:11px;color:var(--muted-soft);white-space:nowrap}
+kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--muted)}
+#kbdhint{font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* ====== Legenda (overlay) ====== */
+#legend{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center}
+#legend[hidden]{display:none}
+#legendPanel{
+  background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow);
+  width:1060px;max-width:92%;max-height:88%;overflow-y:auto;padding:28px 32px;
+}
+#legendPanel h2{font-size:20px;font-weight:600;margin-bottom:18px}
+#legendPanel h3{font-size:11px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.lg-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:28px}
+.lg-sec{margin-bottom:8px}
+.lg-item{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:12px;color:var(--body)}
+.lg-item .lg-sample{flex:0 0 230px}
+.lg-item .lg-sample .row{font-size:11px}
+.lg-line{flex:0 0 90px;height:12px;position:relative}
+.lg-line i{position:absolute;left:0;right:10px;top:5px;height:0;border-top:2.25px solid var(--ink)}
+.lg-line.sum i{border-top-style:dashed;border-color:var(--muted)}
+.lg-line.svc i{border-top-style:dotted;border-color:var(--border-strong)}
+.lg-line::after{content:'';position:absolute;right:0;top:1px;border:5px solid transparent;border-left-color:var(--ink)}
+.lg-line.sum::after{border-left-color:var(--muted)}
+.lg-line.svc::after{border-left-color:var(--border-strong)}
+.lg-state{display:inline-block;width:84px;text-align:center;font-size:9px;font-weight:600;
+  padding:7px 4px;border-radius:var(--r-sm);margin-right:8px}
+#legendClose{margin-top:14px}
+
+/* ====== Reduced motion ====== */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .row.in{animation:none}
+  .r-typing .d{animation:none;opacity:.6}
+}
+
+/* ====== Mobil — nouzové skládání ====== */
+@media (max-width:743px){
+  body{overflow:auto}
+  #viewport{height:auto;overflow:visible}
+  #stage{position:static;transform:none!important;width:100%;height:auto}
+  #board{flex-direction:column;height:auto}
+  #backstage{flex-direction:column;padding:14px 8px 8px}
+  #backcols{flex-direction:column}
+  #backcols .col{margin-left:0;margin-top:12px}
+  #backcols .col:first-child{margin-top:0}
+  .col-body{max-height:340px}
+  .col.ghost{display:none}
+  #backstage.bs-empty{display:none}
+  #rail{flex-direction:row;flex-wrap:wrap;justify-content:center}
+  #wires,#swim,#kbdhint,#phases{display:none}
+  #controls{flex-wrap:wrap;height:auto;padding:12px}
+  #capbar{height:auto;padding:10px 16px;flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="stage">
+
+  <!-- Sticky komentářová lišta -->
+  <header id="capbar">
+    <div class="brand">Cesta kontextu<small>multi-agentní systém (multi-agent system)</small></div>
+    <div id="caption">…</div>
+    <nav id="phases" aria-label="Fáze průchodu"></nav>
+    <div id="stepPos">Krok <b id="posNow">1</b> / <span id="posMax">31</span></div>
+  </header>
+
+  <!-- UI chat (venku) + backstage (sloupce 2–5) + lišta služeb -->
+  <main id="board">
+    <svg id="wires"></svg>
+
+    <section class="col" data-w="ui">
+      <div class="col-head">
+        <div class="t"><span class="ico">💬</span>UI chat<span class="mode">vstup/výstup</span></div>
+        <div class="sub">uživatel ↔ systém · jediné, co uživatel vidí</div>
+        <div class="status"></div>
+      </div>
+      <div class="col-body"></div>
+    </section>
+
+    <div id="backstage">
+      <span class="bs-label">uvnitř systému — uživatel toto nevidí</span>
+      <div id="backcols">
+        <section class="col" data-w="orch">
+          <div class="col-head">
+            <div class="t"><span class="ico">🧠</span>Orchestrátor<span class="mode">řídí</span></div>
+            <div class="sub">plánuje, deleguje, sbírá shrnutí</div>
+            <div class="status"></div>
+            <div class="capwrap"><span class="caplabel">kontext</span><div class="meter"><i></i></div><span class="capct">0 %</span><span class="chip"></span></div>
+          </div>
+          <div class="col-body"></div>
+        </section>
+        <section class="col" data-w="ana">
+          <div class="col-head">
+            <div class="t"><span class="ico">🔎</span>analytik-poptavky<span class="mode">∥ paralelně</span></div>
+            <div class="sub">skill: researcher · tool: web search</div>
+            <div class="status"></div>
+            <div class="capwrap"><span class="caplabel">kontext</span><div class="meter"><i></i></div><span class="capct">0 %</span><span class="chip"></span></div>
+          </div>
+          <div class="col-body"></div>
+        </section>
+        <section class="col" data-w="ske">
+          <div class="col-head">
+            <div class="t"><span class="ico">🏁</span>skener-konkurence<span class="mode">∥ paralelně</span></div>
+            <div class="sub">skill: competitor · web + databáze/MCP</div>
+            <div class="status"></div>
+            <div class="capwrap"><span class="caplabel">kontext</span><div class="meter"><i></i></div><span class="capct">0 %</span><span class="chip"></span></div>
+          </div>
+          <div class="col-body"></div>
+        </section>
+        <section class="col" data-w="pis">
+          <div class="col-head">
+            <div class="t"><span class="ico">✍️</span>pisatel-reportu<span class="mode">→ sekvenčně</span></div>
+            <div class="sub">skill: writer · bez nástrojů (no tools)</div>
+            <div class="status"></div>
+            <div class="capwrap"><span class="caplabel">kontext</span><div class="meter"><i></i></div><span class="capct">0 %</span><span class="chip"></span></div>
+          </div>
+          <div class="col-body"></div>
+        </section>
+      </div>
+    </div>
+
+    <aside id="rail">
+      <h3>Externí služby</h3>
+      <div class="svc-item" data-s="web"><span class="si">🌐</span>Web</div>
+      <div class="svc-item" data-s="mcp"><span class="si">🔌</span>MCP</div>
+      <div class="svc-item" data-s="db"><span class="si">🗄️</span>Databáze</div>
+      <div class="svc-item" data-s="mem"><span class="si">💾</span>Paměť</div>
+    </aside>
+  </main>
+
+  <!-- Swimlane časová osa -->
+  <section id="swim"><div id="swimhead"><span>čas →</span></div></section>
+
+  <!-- Ovládání -->
+  <footer id="controls">
+    <button class="btn ghost" id="btnRestart" title="Restart">⟲ Restart</button>
+    <button class="btn" id="btnPrev" title="Zpět (←)">◀ Zpět</button>
+    <button class="btn primary" id="btnPlay" title="Play / pauza (mezerník)">▶ Přehrát</button>
+    <button class="btn" id="btnNext" title="Další (→)">Další ▶</button>
+    <div id="dots"></div>
+    <button class="btn" id="btnLegend" title="Legenda">Legenda</button>
+    <div id="speed">
+      <button data-s="0.5">0,5×</button>
+      <button data-s="1" class="on">1×</button>
+      <button data-s="2">2×</button>
+    </div>
+    <span id="kbdhint"><kbd>←</kbd> <kbd>→</kbd> krok · <kbd>mezerník</kbd> play</span>
+    <span id="note">texty zkráceny / zjednodušeno</span>
+  </footer>
+
+  <!-- Legenda (overlay) -->
+  <div id="legend" hidden>
+    <div id="legendPanel" role="dialog" aria-label="Legenda">
+      <h2>Legenda</h2>
+      <div class="lg-grid">
+        <div>
+          <div class="lg-sec">
+            <h3>Typy kartiček (barva = typ)</h3>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-sys" style="display:block"><span class="tag">systémový prompt</span>role, nástroje, pravidla…</span></span>systémový prompt — okno s ním už startuje</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-skill" style="display:inline-block">⚙ SKILL: researcher</span></span>skill — instrukce, nahrává se před úkolem</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-task" style="display:block"><span class="tag">📥 úkol od: orchestrátor</span>Zadání práce…</span></span>úkol — teče doprava (delegace)</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-call" style="display:block"><span class="svc">WEB</span><span class="tag">tool call →</span>web_search("…")</span></span>tool call — volání externí služby</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-res" style="display:block"><span class="tag">← tool result</span>vrácená data…</span></span>tool result — výsledek, plní okno</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-note" style="display:block"><span class="tag">poznámka</span>interní úvaha agenta…</span></span>interní poznámka — reasoning, nikam neteče</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-digest" style="display:block"><span class="tag">shrnutí od: agent</span>3 řádky faktů…</span></span>shrnutí — jediné, co teče zpět nahoru</div>
+            <div class="lg-item"><span class="lg-sample"><span class="row r-rep" style="display:block"><h4 style="font-size:11px;font-weight:600">Sekce</h4>text reportu…</span></span>report — finální dokument (výjimka: putuje celý)</div>
+          </div>
+        </div>
+        <div>
+          <div class="lg-sec">
+            <h3>Šipky (tok dat)</h3>
+            <div class="lg-item"><span class="lg-line"><i></i></span>úkol — plná, doprava (celé zadání)</div>
+            <div class="lg-item"><span class="lg-line sum"><i></i></span>shrnutí — čárkovaná, zpět (jen pár řádků)</div>
+            <div class="lg-item"><span class="lg-line svc"><i></i></span>služba — tečkovaná, k externí službě</div>
+          </div>
+          <div class="lg-sec">
+            <h3>Měřič kapacity kontextu</h3>
+            <div class="lg-item"><span class="lg-sample" style="flex-basis:120px"><span class="meter warn" style="display:block"><i style="width:88%"></i></span></span>každá kartička zabírá tokeny; od 85&nbsp;% se měřič přepne do varovné červené — proto se zpět posílají shrnutí, ne plné postupy</div>
+          </div>
+          <div class="lg-sec">
+            <h3>Stavy okna</h3>
+            <div class="lg-item">
+              <span class="lg-state" style="border:2px solid var(--ink);background:var(--surface-soft)">aktivní</span>
+              právě mluví / pracuje (mohou být i dvě)
+            </div>
+            <div class="lg-item">
+              <span class="lg-state" style="border:1px solid var(--hairline);opacity:.45;filter:grayscale(.9)">běží</span>
+              pracuje, zrovna nemluví — vizuálně potlačené
+            </div>
+            <div class="lg-item">
+              <span class="lg-state" style="border:1px solid var(--hairline);color:var(--muted);opacity:.35;filter:grayscale(1)">✓ ukončen</span>
+              shrnutí předáno, kontext uvolněn
+            </div>
+            <div class="lg-item" style="color:var(--muted)">okno, které ještě nevzniklo, není na plátně vůbec — objeví se až materializací (delegací)</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="legendClose">Zavřít</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   v3 — JEDEN ZDROJ PRAVDY: steps[]. UI = čistá funkce render(stepIndex).
+   Změny proti v2: 31 kroků (system prompt preload, paměť 2×, chyba+retry,
+   reasoning beaty, skutečně paralelní kroky, oddělené ukončování oken),
+   barevné výplně typů kartiček, výrazné potlačení neaktivních oken,
+   nenarozená okna zkolabovaná na nulu, K-štítky na kartičkách.
+   ===================================================================== */
+
+// Kapacity kontextových oken (UI chat měřič nemá — chat je jen pohled)
+const CAP = { orch:48, ana:40, ske:34, pis:38 };
+
+// Životní cyklus oken: born = krok materializace, end = krok ukončení
+// (end je až PO kroku, ve kterém okno odevzdává — aby nezašedlo, když mluví)
+const LIFE = {
+  ui:  {born:0,  end:Infinity},
+  orch:{born:1,  end:Infinity},
+  ana: {born:7,  end:17},   // K17 odevzdá shrnutí · od K18 ✓ ukončen
+  ske: {born:7,  end:19},   // K19 odevzdá shrnutí · od K20 ✓ ukončen
+  pis: {born:21, end:29},   // K22 vznik · K29 odevzdá report · od K30 ✓
+};
+
+// Fáze průchodu (breadcrumb + předěly ve swimlane) — indexy 0-based
+const PHASES = [
+  {n:'zadání',     a:0,  b:2},
+  {n:'plán',       a:3,  b:6},
+  {n:'delegace ∥', a:7,  b:8},
+  {n:'sběr dat',   a:9,  b:15},
+  {n:'shrnutí',    a:16, b:19},
+  {n:'report',     a:20, b:27},
+  {n:'odpověď',    a:28, b:30},
+];
+
+// Šablony kartiček (barva = typ, viz legenda)
+const T = {
+  user : t => `<div class="row r-msg me"><span class="av">👤</span><div class="bub"><span class="tag">uživatel</span>${t}</div></div>`,
+  bot  : t => `<div class="row r-msg sys"><span class="av">🤖</span><div class="bub"><span class="tag">systém → uživatel</span>${t}</div></div>`,
+  sys  : t => `<div class="row r-sys"><span class="tag">systémový prompt (system prompt)</span>${t}</div>`,
+  task : (from,t) => `<div class="row r-task"><span class="tag">📥 úkol od: ${from}</span>${t}</div>`,
+  skill: t => `<div class="row r-skill">⚙ ${t}</div>`,
+  plan : t => `<div class="row r-plan"><span class="tag">plán (plan)</span>${t}</div>`,
+  call : (svc,t) => `<div class="row r-call"><span class="svc">${svc}</span><span class="tag">tool call →</span>${t}</div>`,
+  res  : t => `<div class="row r-res"><span class="tag">← tool result</span>${t}</div>`,
+  resw : t => `<div class="row r-res bad"><span class="tag">← tool result ⚠ nepoužitelný</span>${t}</div>`,
+  note : t => `<div class="row r-note"><span class="tag">poznámka (reasoning)</span>${t}</div>`,
+  dig  : (from,t) => `<div class="row r-digest"><span class="tag">shrnutí od: ${from}</span>${t}</div>`,
+  got  : (from,t) => `<div class="row r-task"><span class="tag">📄 report od: ${from}</span>${t}</div>`,
+  rep  : (h,t) => `<div class="row r-rep"><h4>${h}</h4>${t}</div>`,
+};
+
+// krok = { actor, caption, deltas[{w,tk,html}], links[{f,t,k,lbl}], services[] }
+const steps = [
+{ // K1 — existuje jen chat
+  actor:'ui',
+  caption:'Uživatel zadává úkol. Zatím existuje jediné kontextové okno (context window) — chat.',
+  deltas:[{w:'ui',tk:0,html:T.user('Připrav mi rešerši trhu s elektrokoly v ČR. Zajímá mě velikost trhu, trendy poptávky a hlavní konkurenti. Výstup: stručný report.')}],
+  links:[], services:[]
+},
+{ // K2 — zrod orchestrátora se systémovým promptem
+  actor:'orch',
+  caption:'Vzniká okno orchestrátora. Nezačíná prázdné — systémový prompt a definice nástrojů zabírají místo ještě před první zprávou.',
+  deltas:[{w:'orch',tk:6,html:T.sys('Role: orchestrátor. K dispozici: 3 sub-agenti (researcher · competitor · writer) · nástroje: paměť, delegace <i>(zkráceno)</i>')}],
+  links:[], services:[]
+},
+{ // K3 — zadání dovnitř
+  actor:'orch',
+  caption:'Zadání teče z chatu dovnitř systému — do oddělené paměti orchestrátora.',
+  deltas:[{w:'orch',tk:4,html:T.task('UI chat','Rešerše trhu e-kol v ČR — poptávka, konkurence, finální report.')}],
+  links:[{f:'ui',t:'orch',k:'task',lbl:'zadání'}], services:[]
+},
+{ // K4 — reasoning
+  actor:'orch',
+  caption:'Orchestrátor přemýšlí (reasoning): co přesně potřebuje a v jakém pořadí. Tahle úvaha nikam neteče — zůstává v jeho okně.',
+  deltas:[{w:'orch',tk:3,html:T.note('Potřebuji: ① čísla trhu a trendy ② přehled konkurence ③ syntézu do reportu. Než začnu — nemáme už něco v paměti?')}],
+  links:[], services:[]
+},
+{ // K5 — kontrola paměti
+  actor:'orch',
+  caption:'Nejdřív paměť (memory): možná podobná rešerše už existuje. Externí služba vpravo pulzuje.',
+  deltas:[
+    {w:'orch',tk:2,html:T.call('PAMĚŤ','memory.search("elektrokola ČR rešerše")')},
+    {w:'orch',tk:2,html:T.res('žádný relevantní záznam — jdeme od nuly')},
+  ],
+  links:[{f:'orch',t:'rail',k:'svc'}], services:['mem']
+},
+{ // K6 — plán
+  actor:'orch',
+  caption:'Plán: dva podúkoly poběží paralelně (parallel), třetí — pisatel — musí počkat na oba.',
+  deltas:[{w:'orch',tk:5,html:T.plan('<ol><li>analytik-poptavky → velikost trhu + trendy <i>(paralelně)</i></li><li>skener-konkurence → hráči + ceny <i>(paralelně)</i></li><li>pisatel-reportu → syntéza <i>(čeká na 1 i 2)</i></li></ol>')}],
+  links:[], services:[]
+},
+{ // K7 — průběžná zpráva uživateli
+  actor:'ui',
+  caption:'Průběžná zpráva uživateli — jediné, co z celé přípravy uvidí. Vše ostatní zůstává v zákulisí.',
+  deltas:[{w:'ui',tk:0,html:T.bot('Rozumím. Rozdělil jsem rešerši mezi dva specialisty a po dokončení vám pošlu stručný report.')}],
+  links:[{f:'orch',t:'ui',k:'sum',lbl:'průběžná zpráva'}], services:[]
+},
+{ // K8 — materializace obou sub-agentů (system prompt + skill)
+  actor:'orch',
+  caption:'Materializace: dvě nová okna vznikají současně — a obě už od startu nesou systémový prompt a skill s instrukcemi.',
+  deltas:[
+    {w:'ana',tk:4,html:T.sys('Role: výzkumný sub-agent · nástroj: web search')},
+    {w:'ana',tk:2,html:T.skill('SKILL: researcher — jak dělat rešerši poptávky')},
+    {w:'ske',tk:4,html:T.sys('Role: konkurenční sub-agent · nástroje: web + MCP databáze')},
+    {w:'ske',tk:2,html:T.skill('SKILL: competitor — jak mapovat konkurenci')},
+  ],
+  links:[], services:[]
+},
+{ // K9 — delegace úkolů
+  actor:'orch',
+  caption:'Delegace: každý dostává jen svůj úkol — ne celou historii. Okna jsou oddělené paměti.',
+  deltas:[
+    {w:'ana',tk:4,html:T.task('orchestrátor','Zjisti velikost trhu a trendy poptávky po e-kolech v ČR. Vrať stručné shrnutí s čísly.')},
+    {w:'ske',tk:4,html:T.task('orchestrátor','Najdi hlavní konkurenty, jejich segmenty a cenové hladiny. Vrať stručné shrnutí.')},
+  ],
+  links:[{f:'orch',t:'ana',k:'task',lbl:'úkol'},{f:'orch',t:'ske',k:'task',lbl:'úkol'}], services:[]
+},
+{ // K10 — oba volají web SOUČASNĚ
+  actor:'ana',
+  caption:'Oba agenti volají web současně — ve swimlane dole se jejich pruhy poprvé překrývají.',
+  deltas:[
+    {w:'ana',tk:3,html:T.call('WEB','web_search("velikost trhu elektrokol ČR 2025 prodeje")')},
+    {w:'ske',tk:3,html:T.call('WEB','web_search("největší prodejci a značky elektrokol ČR")')},
+  ],
+  links:[{f:'ana',t:'rail',k:'svc'},{f:'ske',t:'rail',k:'svc'}], services:['web']
+},
+{ // K11 — oba results
+  actor:'ana',
+  caption:'Výsledky se ukládají každému do vlastního okna — a zabírají v něm místo. Agenti si navzájem do oken nevidí.',
+  deltas:[
+    {w:'ana',tk:4,html:T.res('ČR: prodáno ≈ 110 tis. e-kol/rok · e-kola ≈ 35 % všech prodaných kol · prům. cena ≈ 45 tis. Kč <i>(zkráceno)</i>')},
+    {w:'ske',tk:4,html:T.res('Domácí značky: Crussis, Apache, Leader Fox · import: Haibike, Cube · prodejci: Alza, Sportisimo <i>(zkráceno)</i>')},
+  ],
+  links:[], services:[]
+},
+{ // K12 — reasoning obou
+  actor:'ana',
+  caption:'Mezi výsledkem a dalším krokem agent rozhoduje: co už mám, co mi chybí, kam sáhnout dál.',
+  deltas:[
+    {w:'ana',tk:2,html:T.note('Čísla trhu mám. Chybí trendy poptávky — zpřesním dotaz na dojíždění a městská kola.')},
+    {w:'ske',tk:2,html:T.note('Značky mám, chybí cenové hladiny — web je nepřesný, zkusím tržní databázi přes MCP.')},
+  ],
+  links:[], services:[]
+},
+{ // K13 — druhé kolo: web + MCP/DB
+  actor:'ana',
+  caption:'Druhé kolo: analytik znovu na web, skener přes MCP (Model Context Protocol) do databáze.',
+  deltas:[
+    {w:'ana',tk:3,html:T.call('WEB','web_search("trendy poptávky e-bike ČR 2025")')},
+    {w:'ske',tk:3,html:T.call('MCP·DB','mcp.market_db.query("ceny e-kol podle značky, CZ")')},
+  ],
+  links:[{f:'ana',t:'rail',k:'svc'},{f:'ske',t:'rail',k:'svc'}], services:['web','mcp','db']
+},
+{ // K14 — nepoužitelný výsledek
+  actor:'ana',
+  caption:'Nástroj nevrací vždy, co čekáš: výsledek je o koloběžkách. I nepoužitelná odpověď ale zabrala místo v okně.',
+  deltas:[{w:'ana',tk:3,html:T.resw('výsledky o e-koloběžkách a sdílených skútrech — pro e-kola nepoužitelné')}],
+  links:[], services:[]
+},
+{ // K15 — retry analytika + DB result skenera
+  actor:'ana',
+  caption:'Analytik chybu opravuje přesnějším dotazem; skeneru mezitím dorazila data z databáze.',
+  deltas:[
+    {w:'ana',tk:3,html:T.call('WEB','web_search("\\"elektrokola\\" poptávka trend ČR dojíždění −koloběžky")')},
+    {w:'ske',tk:4,html:T.res('Crussis — treková, od 35 tis. Kč · Apache — městská, od 30 tis. Kč · Haibike — sportovní, od 60 tis. Kč')},
+  ],
+  links:[{f:'ana',t:'rail',k:'svc'}], services:['web']
+},
+{ // K16 — finální result analytika, měřič ≥85 %
+  actor:'ana',
+  caption:'Poslední dílek — a měřič analytika skočil na 85 %: okno je skoro plné. Přesně proto se zpět posílá shrnutí, ne celý postup.',
+  deltas:[{w:'ana',tk:6,html:T.res('Roste zájem o městská e-kola na dojíždění · sezónní špička jaro · odhad růstu ~8 % ročně · poptávka po cenách do 40 tis. Kč <i>(zkráceno)</i>')}],
+  links:[], services:[]
+},
+{ // K17 — shrnutí analytika (okno JEŠTĚ aktivní)
+  actor:'ana',
+  caption:'Analytik destiluje 11 kartiček do 3 řádků a posílá je orchestrátorovi. Plný postup nahoru neteče.',
+  deltas:[
+    {w:'ana',tk:2,html:T.note('SYNTÉZA → odesílám krátké shrnutí (summary); plný postup zůstává jen u mě')},
+    {w:'orch',tk:4,html:T.dig('analytik-poptavky','≈ 110 tis. ks/rok · 35 % trhu kol · růst ~8 %, tahounem městská e-kola na dojíždění')},
+  ],
+  links:[{f:'ana',t:'orch',k:'sum',lbl:'shrnutí · 11 kartiček → 3 řádky'}], services:[]
+},
+{ // K18 — analytik ✓ ukončen; skener dopisuje syntézu
+  actor:'ske',
+  caption:'Okno analytika končí — kontext se uvolnil (zašedlé ✓). Skener ještě dopisuje vlastní syntézu.',
+  deltas:[{w:'ske',tk:2,html:T.note('SYNTÉZA → skládám shrnutí cen a hráčů pro orchestrátora')}],
+  links:[], services:[]
+},
+{ // K19 — shrnutí skenera
+  actor:'ske',
+  caption:'Druhé shrnutí míří nahoru. Orchestrátor sbírá výsledky, ale detaily postupů nikdy neuvidí.',
+  deltas:[{w:'orch',tk:4,html:T.dig('skener-konkurence','Lídři: Crussis, Apache, Leader Fox · ceny 30–60 tis. Kč · sílí import prémiových značek')}],
+  links:[{f:'ske',t:'orch',k:'sum',lbl:'shrnutí · 9 kartiček → 3 řádky'}], services:[]
+},
+{ // K20 — skener ✓ ukončen
+  actor:'orch',
+  caption:'I skener končí. Orchestrátor má 2 shrnutí — 2 plné pracovní postupy zanikly spolu s okny agentů.',
+  deltas:[{w:'orch',tk:2,html:T.note('Mám obě shrnutí (6 řádků faktů). Pracovní postupy agentů zanikly — nepotřebuji je.')}],
+  links:[], services:[]
+},
+{ // K21 — zadání pro pisatele
+  actor:'orch',
+  caption:'Zadání pro posledního agenta vzniká POUZE z obou shrnutí — nic jiného pisatel nedostane.',
+  deltas:[{w:'orch',tk:4,html:T.plan('Zadání pro pisatele: report o 3 sekcích (trh · konkurence · doporučení), podklad = 2 shrnutí. Max 300 slov.')}],
+  links:[], services:[]
+},
+{ // K22 — materializace pisatele
+  actor:'pis',
+  caption:'Teprve teď vzniká okno pisatele (sequential) — dřív by nemělo co dělat. I ono startuje se systémovým promptem a skillem.',
+  deltas:[
+    {w:'pis',tk:4,html:T.sys('Role: pisatel reportů · bez nástrojů (no tools)')},
+    {w:'pis',tk:2,html:T.skill('SKILL: writer — struktura a tón reportu')},
+  ],
+  links:[], services:[]
+},
+{ // K23 — úkol + 2 shrnutí
+  actor:'orch',
+  caption:'Úkol + obě shrnutí. V paměti pisatele není žádná historie vyhledávání — jen destilát.',
+  deltas:[{w:'pis',tk:6,html:T.task('orchestrátor','Napiš report: trh · konkurence · doporučení (max 300 slov). Přiloženo: 2 shrnutí.')}],
+  links:[{f:'orch',t:'pis',k:'task',lbl:'úkol + 2 shrnutí'}], services:[]
+},
+{ // K24 — osnova
+  actor:'pis',
+  caption:'Pisatel si nejdřív rozvrhne strukturu — i tahle úvaha zabírá tokeny v jeho okně.',
+  deltas:[{w:'pis',tk:3,html:T.note('Osnova: ① Trh (čísla, růst) ② Konkurence (hráči, ceny) ③ Doporučení (mezera na trhu)')}],
+  links:[], services:[]
+},
+{ // K25 — sekce Trh
+  actor:'pis',
+  caption:'První sekce vzniká čistě ze shrnutí analytika — původní tool cally pisatel nikdy neviděl.',
+  deltas:[{w:'pis',tk:4,html:T.rep('Trh','Český trh e-kol dosahuje ≈ 110 tis. prodaných kusů ročně (35 % všech kol) a roste tempem ~8 % ročně, tahounem jsou městská e-kola… <i>(zkráceno)</i>')}],
+  links:[], services:[]
+},
+{ // K26 — sekce Konkurence
+  actor:'pis',
+  caption:'Druhá sekce ze shrnutí skenera. Report roste po sekcích — a s ním i zaplnění pisatelova okna.',
+  deltas:[{w:'pis',tk:4,html:T.rep('Konkurence','Dominují domácí značky Crussis, Apache a Leader Fox (30–60 tis. Kč); sílí import prémiových značek… <i>(zkráceno)</i>')}],
+  links:[], services:[]
+},
+{ // K27 — sekce Doporučení
+  actor:'pis',
+  caption:'Třetí sekce propojuje obě shrnutí — doporučení vyplývá z trendů poptávky i z cen konkurence.',
+  deltas:[{w:'pis',tk:4,html:T.rep('Doporučení','Největší příležitost: městská e-kola do 40 tis. Kč pro dojíždění — rostoucí segment, slabě pokrytý domácími značkami… <i>(zkráceno)</i>')}],
+  links:[], services:[]
+},
+{ // K28 — self-check
+  actor:'pis',
+  caption:'Sebekontrola (self-check) před odevzdáním: limit slov i původ všech čísel.',
+  deltas:[{w:'pis',tk:2,html:T.note('KONTROLA → 287 slov ≤ 300 · všechna čísla pocházejí z přiložených shrnutí ✓')}],
+  links:[], services:[]
+},
+{ // K29 — handoff celého reportu (výjimka!)
+  actor:'pis',
+  caption:'Výjimka z pravidla „nahoru jen shrnutí": report JE návratová hodnota — putuje celý. Sleduj skok měřiče orchestrátora do červené: celý dokument je drahý.',
+  deltas:[
+    {w:'pis',tk:2,html:T.note('HOTOVO → vracím celý report orchestrátorovi (handoff) a končím')},
+    {w:'orch',tk:7,html:T.got('pisatel-reportu','PŘIJAT REPORT · Trh / Konkurence / Doporučení · 287 slov — připraven k předání')},
+  ],
+  links:[{f:'pis',t:'orch',k:'sum',lbl:'report — celý dokument'}], services:[]
+},
+{ // K30 — pisatel ✓; uložení do paměti
+  actor:'orch',
+  caption:'Pisatel končí. Orchestrátor ukládá report do paměti — až se příště někdo zeptá na e-kola, krok „hledám v paměti" už nevyjde naprázdno.',
+  deltas:[{w:'orch',tk:2,html:T.call('PAMĚŤ','memory.save("rešerše e-kola ČR", report)')}],
+  links:[{f:'orch',t:'rail',k:'svc'}], services:['mem']
+},
+{ // K31 — odpověď uživateli
+  actor:'ui',
+  caption:'Hotovo. Uživatel vidí jediný čistý výsledek — a každé okno po cestě vidělo jen to, co opravdu potřebovalo.',
+  deltas:[{w:'ui',tk:0,html:T.bot('<b>📊 Rešerše: elektrokola v ČR</b><br>· Trh: ≈ 110 tis. ks/rok, růst ~8 %<br>· Konkurence: Crussis, Apache, Leader Fox (30–60 tis. Kč)<br>· Doporučení: městská e-kola do 40 tis. Kč <i>(zkráceno)</i>')}],
+  links:[{f:'orch',t:'ui',k:'sum',lbl:'odpověď'}], services:[]
+},
+];
+
+const N = steps.length;
+const WINDOWS = ['ui','orch','ana','ske','pis'];
+const LANE_NAMES = {ui:'UI chat',orch:'Orchestrátor',ana:'analytik-poptavky',ske:'skener-konkurence',pis:'pisatel-reportu'};
+const RM = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || false;
+const raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : (f=>setTimeout(f,0));
+
+// Aktéři aktivní v daném kroku (actor + okna s deltami + konce spojů)
+const activity = steps.map(s=>{
+  const set = new Set([s.actor]);
+  s.links.forEach(l=>{ if(l.t!=='rail'){set.add(l.f);set.add(l.t);} });
+  s.deltas.forEach(d=>set.add(d.w));
+  return set;
+});
+
+// Stav okna — čistě z indexu kroku
+function stateOf(w,i){
+  const L=LIFE[w];
+  if(i<L.born) return 'ghost';
+  if(i>=L.end) return 'done';
+  return activity[i].has(w) ? 'active' : 'run';
+}
+function phaseOf(i){ return PHASES.findIndex(p=>i>=p.a && i<=p.b); }
+
+// ---------- DOM reference ----------
+const stage = document.getElementById('stage');
+const board = document.getElementById('board');
+const backstage = document.getElementById('backstage');
+const cols = {}; WINDOWS.forEach(w=>cols[w]=board.querySelector(`.col[data-w="${w}"]`));
+const wires = document.getElementById('wires');
+const captionEl = document.getElementById('caption');
+const posNow = document.getElementById('posNow');
+document.getElementById('posMax').textContent = N;
+const dotsEl = document.getElementById('dots');
+const swimEl = document.getElementById('swim');
+const phasesEl = document.getElementById('phases');
+const legendEl = document.getElementById('legend');
+const railItems = {}; document.querySelectorAll('.svc-item').forEach(el=>railItems[el.dataset.s]=el);
+
+// ---------- Stavové proměnné přehrávače ----------
+let idx = 0;
+let playing = false;
+let speed = 1;
+let timer = null;
+let wireTimer = null;
+const BASE_MS = 3400;
+
+// ---------- Jednorázová stavba: breadcrumb, tečky, swimlane ----------
+PHASES.forEach((p,k)=>{
+  if(k>0){const sep=document.createElement('i');sep.textContent='›';phasesEl.appendChild(sep);}
+  const s=document.createElement('span');s.textContent=p.n;phasesEl.appendChild(s);
+});
+const phaseChips=[...phasesEl.querySelectorAll('span')];
+
+for(let i=0;i<N;i++){
+  const b=document.createElement('button');
+  b.title=`Krok ${i+1}`;
+  b.addEventListener('click',()=>{pause();goTo(i);});
+  dotsEl.appendChild(b);
+}
+const PHASE_STARTS = new Set(PHASES.map(p=>p.a).filter(a=>a>0));
+WINDOWS.forEach(w=>{
+  const lane=document.createElement('div');lane.className='lane';
+  const nm=document.createElement('span');nm.className='lname';nm.textContent=LANE_NAMES[w];
+  const tr=document.createElement('div');tr.className='track';
+  for(let i=0;i<N;i++){
+    const c=document.createElement('div');c.className='cell';c.dataset.w=w;c.dataset.i=i;
+    if(activity[i].has(w) && stateOf(w,i)!=='ghost' && stateOf(w,i)!=='done') c.classList.add('on');
+    if(PHASE_STARTS.has(i)) c.classList.add('ph');
+    c.title=`Krok ${i+1} · ${LANE_NAMES[w]}`;
+    c.addEventListener('click',()=>{pause();goTo(i);});
+    tr.appendChild(c);
+  }
+  lane.appendChild(nm);lane.appendChild(tr);swimEl.appendChild(lane);
+});
+
+/* =====================================================================
+   render(i) — čistá funkce stavu. Vše se přepočítá z steps[0..i].
+   ===================================================================== */
+function render(i){
+  WINDOWS.forEach(w=>{
+    const col=cols[w];
+    const st=stateOf(w,i);
+    col.dataset.state=st;
+    col.classList.toggle('ghost',st==='ghost');
+    col.classList.toggle('active',st==='active');
+    col.classList.toggle('run',st==='run');
+    col.classList.toggle('done',st==='done');
+    col.classList.toggle('mat',LIFE[w].born===i && !RM);   // šířka roste, obsah fade-in
+
+    // status ukončeného okna
+    const statusEl=col.querySelector('.status');
+    if(statusEl) statusEl.textContent = (st==='done')
+      ? (w==='pis' ? '✓ report předán · kontext uvolněn' : '✓ shrnutí předáno · kontext uvolněn')
+      : '';
+
+    // obsah okna + tokeny (K-štítek koreluje pořadí kroků napříč okny)
+    let html='', used=0, addedNow=0;
+    for(let s=0;s<=i;s++){
+      steps[s].deltas.forEach(d=>{
+        if(d.w!==w) return;
+        used+=d.tk;
+        let h=d.html.replace('<span class="tag">',`<span class="tag"><i class="kn">K${s+1}</i>`);
+        if(s===i){ addedNow+=d.tk; h=h.replace('class="row','class="row in'); }
+        html+=h;
+      });
+    }
+    // indikátor „systém pracuje" v chatu (mezi zadáním a finální odpovědí)
+    if(w==='ui' && i>=1 && i<N-1){
+      html+=`<div class="row r-typing"><span class="av">🤖</span><div class="bub"><span class="d"></span><span class="d"></span><span class="d"></span></div></div>`;
+    }
+    const body=col.querySelector('.col-body');
+    body.innerHTML=html;
+
+    // měřič kapacity (UI chat měřič nemá)
+    if(CAP[w]){
+      const pct=Math.min(100,Math.round(100*used/CAP[w]));
+      const meter=col.querySelector('.meter');
+      meter.querySelector('i').style.width=pct+'%';
+      meter.classList.toggle('warn',pct>=85);
+      col.querySelector('.capct').textContent=pct+' %';
+      // tokenový čip „+N"
+      const chip=col.querySelector('.chip');
+      chip.classList.remove('go');
+      if(addedNow>0 && st!=='ghost'){
+        void chip.offsetWidth;               // restart animace
+        chip.textContent='+'+addedNow;
+        chip.classList.add('go');
+      }
+    }
+    if(st!=='ghost' && body.scrollTo) body.scrollTo({top:body.scrollHeight,behavior:RM?'auto':'smooth'});
+  });
+
+  // backstage rámec se objeví až s prvním vnitřním oknem
+  const anyBack=['orch','ana','ske','pis'].some(w=>stateOf(w,i)!=='ghost');
+  backstage.classList.toggle('bs-empty',!anyBack);
+
+  // komentář + pozice + fáze
+  captionEl.textContent=steps[i].caption;
+  posNow.textContent=i+1;
+  const ph=phaseOf(i);
+  phaseChips.forEach((c,k)=>{
+    c.classList.toggle('on',k===ph);
+    c.classList.toggle('done',k<ph);
+  });
+
+  // tečky průběhu (aktuální = jediný korálový bod)
+  [...dotsEl.children].forEach((b,k)=>{
+    b.classList.toggle('cur',k===i);
+    b.classList.toggle('done',k<i);
+  });
+
+  // swimlane
+  swimEl.querySelectorAll('.cell').forEach(c=>{
+    const k=+c.dataset.i;
+    c.classList.toggle('cur',k===i);
+    c.classList.toggle('done',k<=i && c.classList.contains('on'));
+  });
+
+  // pulz externích služeb (ink, decentní)
+  Object.values(railItems).forEach(el=>el.classList.remove('pulse'));
+  steps[i].services.forEach(s=>railItems[s] && railItems[s].classList.add('pulse'));
+
+  // spoje — po layoutu; podruhé po doběhnutí šířkové animace okna
+  raf(()=>drawWires(i));
+  if(wireTimer) clearTimeout(wireTimer);
+  wireTimer=setTimeout(()=>drawWires(idx),620);
+}
+
+/* ---------- SVG spoje mezi okny ---------- */
+function stageRect(el){
+  const r=el.getBoundingClientRect(), s=stage.getBoundingClientRect();
+  const sc=(s.width/1920)||1;
+  const b=board.getBoundingClientRect();
+  return {x:(r.left-b.left)/sc, y:(r.top-b.top)/sc, w:r.width/sc, h:r.height/sc};
+}
+function anchorOf(w, side){
+  const col = w==='rail' ? document.getElementById('rail') : cols[w];
+  let el = col.querySelector('.col-body .row.in:last-of-type');
+  if(!el){
+    const rows=col.querySelectorAll('.col-body .row:not(.r-typing)');
+    el = rows.length ? rows[rows.length-1] : (col.querySelector('.col-head')||col);
+  }
+  if(w==='rail') el = col.querySelector('.svc-item.pulse') || col;
+  const r=stageRect(el);
+  const y=r.y+r.h/2;
+  return side.endsWith('r') ? {x:r.x+r.w,y} : {x:r.x,y};
+}
+function drawWires(i){
+  wires.innerHTML='';
+  if(window.innerWidth<744) return;
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.innerHTML=`
+    <marker id="mTask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#222222"/></marker>
+    <marker id="mSum" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#6a6a6a"/></marker>
+    <marker id="mSvc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#c1c1c1"/></marker>`;
+  wires.appendChild(defs);
+  const ORDER={ui:0,orch:1,ana:2,ske:3,pis:4,rail:5};
+  steps[i].links.forEach(l=>{
+    const goRight = ORDER[l.t]>ORDER[l.f];
+    const a=anchorOf(l.f, goRight?'out-r':'out-l');
+    const b=anchorOf(l.t, goRight?'in-l':'in-r');
+    const dx=Math.max(36,Math.abs(b.x-a.x)*0.35)*(goRight?1:-1);
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M ${a.x} ${a.y} C ${a.x+dx} ${a.y}, ${b.x-dx} ${b.y}, ${b.x} ${b.y}`);
+    p.setAttribute('class', l.k==='task'?'w-task':l.k==='sum'?'w-sum':'w-svc');
+    p.setAttribute('marker-end', l.k==='task'?'url(#mTask)':l.k==='sum'?'url(#mSum)':'url(#mSvc)');
+    wires.appendChild(p);
+    // štítek na šipce (úkol / shrnutí / report …) — střed kubické křivky
+    if(l.lbl){
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',(a.x+b.x)/2);
+      t.setAttribute('y',(a.y+b.y)/2 - 8);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('class','w-lbl');
+      t.textContent=l.lbl;
+      wires.appendChild(t);
+    }
+  });
+}
+
+/* ---------- Přehrávač (jediný časovač, jen volá další krok) ---------- */
+function goTo(i){
+  idx=Math.max(0,Math.min(N-1,i));
+  render(idx);
+}
+function tick(){
+  if(idx>=N-1){pause();return;}
+  goTo(idx+1);
+}
+function play(){
+  if(playing) return;
+  if(idx>=N-1) goTo(0);
+  playing=true;
+  document.getElementById('btnPlay').textContent='⏸ Pauza';
+  timer=setInterval(tick, BASE_MS/speed);
+}
+function pause(){
+  playing=false;
+  document.getElementById('btnPlay').textContent='▶ Přehrát';
+  if(timer){clearInterval(timer);timer=null;}
+}
+function setSpeed(s){
+  speed=s;
+  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.s===s));
+  if(playing){clearInterval(timer);timer=setInterval(tick, BASE_MS/speed);}
+}
+
+// ---------- Ovládací prvky ----------
+document.getElementById('btnPlay').addEventListener('click',()=>playing?pause():play());
+document.getElementById('btnNext').addEventListener('click',()=>{pause();goTo(idx+1);});
+document.getElementById('btnPrev').addEventListener('click',()=>{pause();goTo(idx-1);});
+document.getElementById('btnRestart').addEventListener('click',()=>{pause();goTo(0);});
+document.querySelectorAll('#speed button').forEach(b=>b.addEventListener('click',()=>setSpeed(+b.dataset.s)));
+document.getElementById('btnLegend').addEventListener('click',()=>{pause();legendEl.hidden=false;});
+document.getElementById('legendClose').addEventListener('click',()=>legendEl.hidden=true);
+legendEl.addEventListener('click',e=>{ if(e.target===legendEl) legendEl.hidden=true; });
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){legendEl.hidden=true;return;}
+  if(!legendEl.hidden) return;
+  if(e.key==='ArrowRight'){e.preventDefault();pause();goTo(idx+1);}
+  else if(e.key==='ArrowLeft'){e.preventDefault();pause();goTo(idx-1);}
+  else if(e.key===' '){e.preventDefault();playing?pause():play();}
+});
+
+// ---------- Scale-to-fit (1920×1080 → proporcionální zmenšení) ----------
+function fit(){
+  if(window.innerWidth<744){stage.style.transform='none';drawWires(idx);return;}
+  const s=Math.min(window.innerWidth/1920, window.innerHeight/1080);
+  stage.style.transform=`translate(-50%,-50%) scale(${s})`;
+  raf(()=>drawWires(idx));
+}
+window.addEventListener('resize',fit);
+
+// ---------- Testovací háčky (jsdom smoke test) ----------
+window.__viz = {
+  goTo, N, steps, CAP, LIFE,
+  state:w=>cols[w].dataset.state,
+  rows:w=>cols[w].querySelectorAll('.col-body .row:not(.r-typing)').length,
+  pct:w=>CAP[w]?cols[w].querySelector('.capct').textContent:null,
+  phase:()=>phaseChips.findIndex(c=>c.classList.contains('on')),
+};
+
+// ---------- Start ----------
+fit();
+render(0);
+// v3.0
+</script>
+</body>
+</html>
