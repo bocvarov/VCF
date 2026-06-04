@@ -31,6 +31,7 @@
   --c-res:#f3f8fe;            /* tool result — modrá o stupeň světlejší (pár s callem) */
   --c-dig:#fbf3da;            /* shrnutí (digest) — světlá žlutá */
   --c-rep:#e9f5ec;            /* report — světlá zelená */
+  --c-call-strong:#5b8bc9;    /* sytější modrá tool callu — spoj na externí službu */
   --r-sm:8px; --r-md:14px; --r-full:9999px;
   --shadow:rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
 }
@@ -73,7 +74,7 @@ body{
 .col{
   flex:1 1 0;display:flex;flex-direction:column;min-width:0;position:relative;
   background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);
-  transition:border-color .3s,opacity .35s,filter .35s,flex-grow .5s ease;
+  transition:border-color .3s,opacity .35s,filter .35s;
 }
 /* UI chat — odlišná podlaha: tohle je jediné okno, které uživatel vidí */
 .col[data-w="ui"]{background:var(--surface-soft)}
@@ -87,12 +88,16 @@ body{
 /* UKONČEN = potlačení + ✓ status */
 .col.done{opacity:.35;filter:grayscale(1)}
 .col.done .col-head .status{display:block}
-/* NENAROZENÉ okno neexistuje — sloupec je zkolabovaný na nulu */
-.col.ghost{flex-grow:0.0001;min-width:0;border-color:transparent;overflow:hidden;margin-left:0!important}
-.col.ghost .col-head,.col.ghost .col-body{display:none}
-/* materializace: šířka roste (flex-grow transition), obsah naskočí se zpožděním */
-.col.mat .col-head,.col.mat .col-body{animation:fadeIn .35s ease .45s both}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* NENAROZENÉ okno = prázdný čárkovaný slot ve STEJNÉ šířce (stabilní layout) */
+.col.ghost{border:1.5px dashed var(--hairline-soft);background:transparent}
+.col.ghost .col-head,.col.ghost .col-body{visibility:hidden}
+.col.ghost::after{
+  content:attr(data-ghost);position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;text-align:center;padding:16px;font-size:11px;line-height:1.5;color:#cfcfcf;
+}
+/* materializace: fade-in na místě — žádná změna šířky */
+.col.mat{animation:colIn .5s ease both}
+@keyframes colIn{from{opacity:0}to{opacity:1}}
 
 .col-head{
   flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid var(--hairline-soft);
@@ -132,17 +137,12 @@ body{
 #backstage{
   flex:4.15 1 0;display:flex;min-width:0;position:relative;
   border:1px solid var(--hairline);border-radius:18px;padding:14px 10px 10px;
-  transition:flex-grow .5s ease,border-color .5s;
 }
-#backstage.bs-empty{flex-grow:0.0001;border-color:transparent;overflow:hidden;padding:0}
-#backstage.bs-empty>*{display:none}
 #backstage>.bs-label{
   position:absolute;top:-9px;left:18px;background:var(--canvas);padding:0 10px;
   font-size:11px;font-weight:700;letter-spacing:.32px;text-transform:uppercase;color:var(--muted);
 }
-#backcols{flex:1;display:flex;min-width:0}
-#backcols .col{margin-left:12px}
-#backcols .col:first-child{margin-left:0}
+#backcols{flex:1;display:flex;gap:12px;min-width:0}
 
 /* ====== Kartičky — typ = tlumená výplň + tag (viz legenda) ====== */
 .row{font-size:12.5px;line-height:1.45;color:var(--body);border-radius:var(--r-sm);flex:0 0 auto;position:relative}
@@ -215,7 +215,7 @@ body{
 #wires path{fill:none;stroke-width:2.25}
 .w-task{stroke:var(--ink);stroke-dasharray:14 4;animation:dashFlow 1s linear infinite}
 .w-sum{stroke:var(--muted);stroke-dasharray:4 5;animation:dashFlowR 1.2s linear infinite}
-.w-svc{stroke:var(--hairline);stroke-dasharray:2 5;animation:dashFlow .8s linear infinite}
+.w-svc{stroke:var(--c-call-strong);stroke-width:2.5;stroke-dasharray:1 7;stroke-linecap:round;animation:dashFlow .8s linear infinite}
 @keyframes dashFlow{to{stroke-dashoffset:-36}}
 @keyframes dashFlowR{to{stroke-dashoffset:18}}
 .w-lbl{
@@ -286,10 +286,10 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
 .lg-line{flex:0 0 90px;height:12px;position:relative}
 .lg-line i{position:absolute;left:0;right:10px;top:5px;height:0;border-top:2.25px solid var(--ink)}
 .lg-line.sum i{border-top-style:dashed;border-color:var(--muted)}
-.lg-line.svc i{border-top-style:dotted;border-color:var(--border-strong)}
+.lg-line.svc i{border-top-style:dotted;border-color:var(--c-call-strong)}
 .lg-line::after{content:'';position:absolute;right:0;top:1px;border:5px solid transparent;border-left-color:var(--ink)}
 .lg-line.sum::after{border-left-color:var(--muted)}
-.lg-line.svc::after{border-left-color:var(--border-strong)}
+.lg-line.svc::after{border-left-color:var(--c-call-strong)}
 .lg-state{display:inline-block;width:84px;text-align:center;font-size:9px;font-weight:600;
   padding:7px 4px;border-radius:var(--r-sm);margin-right:8px}
 #legendClose{margin-top:14px}
@@ -313,7 +313,6 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
   #backcols .col:first-child{margin-top:0}
   .col-body{max-height:340px}
   .col.ghost{display:none}
-  #backstage.bs-empty{display:none}
   #rail{flex-direction:row;flex-wrap:wrap;justify-content:center}
   #wires,#swim,#kbdhint,#phases{display:none}
   #controls{flex-wrap:wrap;height:auto;padding:12px}
@@ -349,7 +348,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
     <div id="backstage">
       <span class="bs-label">uvnitř systému — uživatel toto nevidí</span>
       <div id="backcols">
-        <section class="col" data-w="orch">
+        <section class="col" data-w="orch" data-ghost="vznikne po zadání">
           <div class="col-head">
             <div class="t"><span class="ico">🧠</span>Orchestrátor<span class="mode">řídí</span></div>
             <div class="sub">plánuje, deleguje, sbírá shrnutí</div>
@@ -358,7 +357,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
           </div>
           <div class="col-body"></div>
         </section>
-        <section class="col" data-w="ana">
+        <section class="col" data-w="ana" data-ghost="vznikne po delegaci">
           <div class="col-head">
             <div class="t"><span class="ico">🔎</span>analytik-poptavky<span class="mode">∥ paralelně</span></div>
             <div class="sub">skill: researcher · tool: web search</div>
@@ -367,7 +366,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
           </div>
           <div class="col-body"></div>
         </section>
-        <section class="col" data-w="ske">
+        <section class="col" data-w="ske" data-ghost="vznikne po delegaci">
           <div class="col-head">
             <div class="t"><span class="ico">🏁</span>skener-konkurence<span class="mode">∥ paralelně</span></div>
             <div class="sub">skill: competitor · web + databáze/MCP</div>
@@ -376,7 +375,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
           </div>
           <div class="col-body"></div>
         </section>
-        <section class="col" data-w="pis">
+        <section class="col" data-w="pis" data-ghost="vznikne až po dokončení ① a ②">
           <div class="col-head">
             <div class="t"><span class="ico">✍️</span>pisatel-reportu<span class="mode">→ sekvenčně</span></div>
             <div class="sub">skill: writer · bez nástrojů (no tools)</div>
@@ -440,7 +439,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
             <h3>Šipky (tok dat)</h3>
             <div class="lg-item"><span class="lg-line"><i></i></span>úkol — plná, doprava (celé zadání)</div>
             <div class="lg-item"><span class="lg-line sum"><i></i></span>shrnutí — čárkovaná, zpět (jen pár řádků)</div>
-            <div class="lg-item"><span class="lg-line svc"><i></i></span>služba — tečkovaná, k externí službě</div>
+            <div class="lg-item"><span class="lg-line svc"><i></i></span>tool call — modrá tečkovaná, k externí službě</div>
           </div>
           <div class="lg-sec">
             <h3>Měřič kapacity kontextu</h3>
@@ -460,7 +459,7 @@ kbd{font-family:inherit;font-size:10.5px;border:1px solid var(--hairline);border
               <span class="lg-state" style="border:1px solid var(--hairline);color:var(--muted);opacity:.35;filter:grayscale(1)">✓ ukončen</span>
               shrnutí předáno, kontext uvolněn
             </div>
-            <div class="lg-item" style="color:var(--muted)">okno, které ještě nevzniklo, není na plátně vůbec — objeví se až materializací (delegací)</div>
+            <div class="lg-item" style="color:var(--muted)">okno, které ještě nevzniklo, je jen prázdný čárkovaný slot — naplní se až materializací (delegací)</div>
           </div>
         </div>
       </div>
@@ -773,7 +772,6 @@ function phaseOf(i){ return PHASES.findIndex(p=>i>=p.a && i<=p.b); }
 // ---------- DOM reference ----------
 const stage = document.getElementById('stage');
 const board = document.getElementById('board');
-const backstage = document.getElementById('backstage');
 const cols = {}; WINDOWS.forEach(w=>cols[w]=board.querySelector(`.col[data-w="${w}"]`));
 const wires = document.getElementById('wires');
 const captionEl = document.getElementById('caption');
@@ -790,7 +788,6 @@ let idx = 0;
 let playing = false;
 let speed = 1;
 let timer = null;
-let wireTimer = null;
 const BASE_MS = 3400;
 
 // ---------- Jednorázová stavba: breadcrumb, tečky, swimlane ----------
@@ -834,7 +831,7 @@ function render(i){
     col.classList.toggle('active',st==='active');
     col.classList.toggle('run',st==='run');
     col.classList.toggle('done',st==='done');
-    col.classList.toggle('mat',LIFE[w].born===i && !RM);   // šířka roste, obsah fade-in
+    col.classList.toggle('mat',LIFE[w].born===i && !RM);   // fade-in při materializaci
 
     // status ukončeného okna
     const statusEl=col.querySelector('.status');
@@ -879,10 +876,6 @@ function render(i){
     if(st!=='ghost' && body.scrollTo) body.scrollTo({top:body.scrollHeight,behavior:RM?'auto':'smooth'});
   });
 
-  // backstage rámec se objeví až s prvním vnitřním oknem
-  const anyBack=['orch','ana','ske','pis'].some(w=>stateOf(w,i)!=='ghost');
-  backstage.classList.toggle('bs-empty',!anyBack);
-
   // komentář + pozice + fáze
   captionEl.textContent=steps[i].caption;
   posNow.textContent=i+1;
@@ -909,10 +902,8 @@ function render(i){
   Object.values(railItems).forEach(el=>el.classList.remove('pulse'));
   steps[i].services.forEach(s=>railItems[s] && railItems[s].classList.add('pulse'));
 
-  // spoje — po layoutu; podruhé po doběhnutí šířkové animace okna
+  // spoje — po layoutu
   raf(()=>drawWires(i));
-  if(wireTimer) clearTimeout(wireTimer);
-  wireTimer=setTimeout(()=>drawWires(idx),620);
 }
 
 /* ---------- SVG spoje mezi okny ---------- */
@@ -941,7 +932,7 @@ function drawWires(i){
   defs.innerHTML=`
     <marker id="mTask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#222222"/></marker>
     <marker id="mSum" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#6a6a6a"/></marker>
-    <marker id="mSvc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#c1c1c1"/></marker>`;
+    <marker id="mSvc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#5b8bc9"/></marker>`;
   wires.appendChild(defs);
   const ORDER={ui:0,orch:1,ana:2,ske:3,pis:4,rail:5};
   steps[i].links.forEach(l=>{
@@ -1032,7 +1023,7 @@ window.__viz = {
 // ---------- Start ----------
 fit();
 render(0);
-// v3.0
+// v3.1 — stabilní šířky sloupců, zvýrazněný spoj tool callu
 </script>
 </body>
 </html>
